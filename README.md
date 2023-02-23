@@ -5,7 +5,6 @@ Based on [mini-rv32ima by CNLohr](https://github.com/cnlohr/mini-rv32ima).
 ## How it works
 This project uses [CNLohr's mini-rv32ima](https://github.com/cnlohr/mini-rv32ima) RISC-V emulator core to boot the Linux kernel on a Raspberry Pi Pico. The emulator uses a file-backed RAM stored on an SD card, with a cache in the SRAM of the RP2040 to improve performance. 
 
-
 ## Requirements 
 - a Raspberry Pi Pico (or other RP2040 board)
 - an SD card (any capacity will work, the emulator only uses about 20MB of it)
@@ -26,5 +25,6 @@ The SD card needs to be formatted as FAT32 or exFAT. I tested block sizes from 1
 
 ## What it does
 On startup, the emulator will copy the Linux image into RAM. After about 20 seconds, Linux kernel messages will start streaming on the serial console.
-
-Unfortunately, the kernel will panic with a `Read access fault`. It always happens at the same address, at the same spot in the boot process. This is something that I am still investigating. The emulator and RAM caching code works fine when compiled for Linux but always crashes in the exact same way on the Pico. _Any help or suggestions are strongly appreciated!_
+![Boot messages](bootlog.jpg)
+![Kernel panic](panic.jpg)
+Unfortunately, after another 20 seconds, the kernel will panic with a `Read access fault`. It always happens at the same address, at the same spot in the boot process. This is something that I am still investigating. The emulator and RAM caching code works fine when compiled for x86 Linux but always crashes in the exact same way on the Pico. _Any help or suggestions are strongly appreciated!_
