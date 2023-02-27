@@ -3,6 +3,8 @@
 #include "hw_config.h"
 #include "sdram.h"
 
+#include <stdlib.h>
+
 #define CACHE_BLK_BYTES (CACHE_BLK_KB * 1024)
 
 FIL ramFile;
@@ -16,7 +18,8 @@ typedef struct CacheBlock
     bool wasUsed;
 } CacheBlock;
 
-CacheBlock blocks[CACHE_BLK_NUM] ={0};
+CacheBlock blocks[CACHE_BLK_NUM] = {0};
+CacheBlock *blockList[CACHE_BLK_NUM];
 
 uint8_t usedBlocks = 0;
 
@@ -37,7 +40,7 @@ void flushBlock(CacheBlock *b)
     if (b->pendingData)
     {
 
-     //  printf("Write block %d!\n", b->num);
+        //  printf("Write block %d!\n", b->num);
         b->pendingData = false;
         FRESULT fr;
         fr = f_lseek(&ramFile, b->startAddress);
@@ -60,10 +63,10 @@ void flushBlock(CacheBlock *b)
 
 void fetchBlock(uint32_t addr, CacheBlock *b)
 {
-   //  printf("Read block starting at address %d!\n", addr);
+    //  printf("Read block starting at address %d!\n", addr);
     LED_ON();
 
-    b->startAddress = addr - (addr%CACHE_BLK_BYTES);
+    b->startAddress = addr - (addr % CACHE_BLK_BYTES);
     b->wasUsed = true;
     b->pendingData = false;
     FRESULT fr;
@@ -84,11 +87,23 @@ void fetchBlock(uint32_t addr, CacheBlock *b)
     LED_OFF();
 }
 
+int cmpfunc(const void *a, const void *b)
+{
+    CacheBlock *ba = *(CacheBlock **)a;
+    CacheBlock *bb = *(CacheBlock **)b;
+
+    return ba->startAddress - bb->startAddress;
+}
+
 CacheBlock *fetchNewBlock(uint32_t addr)
 {
     CacheBlock *b;
     if (usedBlocks < CACHE_BLK_NUM)
-        b = &blocks[usedBlocks++];
+    {
+        b = &blocks[usedBlocks];
+        blockList[usedBlocks++] = b;
+    }
+
     else
     {
         b = leastRecentlyUsed();
@@ -96,16 +111,46 @@ CacheBlock *fetchNewBlock(uint32_t addr)
             flushBlock(b);
     }
     fetchBlock(addr, b);
+    // insertionSort(blockList, usedBlocks);
+    qsort(blockList, usedBlocks, sizeof(CacheBlock *), cmpfunc);
     return b;
+}
+
+CacheBlock *binarySearch(CacheBlock *arr[], int n, uint32_t x)
+{
+    int Left = 0, Right = n;
+    CacheBlock *Sol = NULL;
+    while(Left <= Right)
+    {
+        int Mid = (Left+Right) / 2;
+        if(arr[Mid]->wasUsed && (x >= arr[Mid]->startAddress && x < arr[Mid]->startAddress + CACHE_BLK_BYTES))
+        {
+            Sol = arr[Mid];
+            break;
+        }
+        if(arr[Mid]->startAddress + CACHE_BLK_BYTES > x)
+            Right = Mid - 1;
+        if(arr[Mid]->startAddress < x)
+            Left = Mid + 1;
+    }
+    return Sol;
 }
 
 CacheBlock *whereCached(uint32_t addr)
 {
-    for (int i = 0; i < usedBlocks; i++)
-        if(blocks[i].wasUsed &&  (addr >= blocks[i].startAddress  && addr < blocks[i].startAddress + CACHE_BLK_BYTES) )
-            return blocks + i;
 
- //   printf("Block %d is not cached\n", blockNum);
+    if (usedBlocks == 0)
+        return NULL;
+
+    CacheBlock * b = binarySearch(blockList, usedBlocks, addr);
+    return b;
+
+    for (int i = 0; i < usedBlocks; i++)
+        if (blockList[i]->wasUsed && (addr >= blockList[i]->startAddress && addr < blockList[i]->startAddress + CACHE_BLK_BYTES))
+            return blockList[i];
+
+    //   printf("Block %d is not cached\n", blockNum);
+
     return NULL;
 }
 
@@ -186,15 +231,15 @@ FRESULT openSDRAMfile(const char *ramFilename, uint32_t sz)
     FRESULT fr = f_open(&ramFile, ramFilename, FA_WRITE | FA_READ);
     if (FR_OK != fr)
         return fr;
-/*
-    uint8_t zero[4096] = {0};
-    for (uint32_t i = 0; i < sz / 4096; i++)
-    {
-        fr = f_write(&ramFile, zero, 4096, NULL);
-        if (FR_OK != fr)
-            return fr;
-    }
-*/
+    /*
+        uint8_t zero[4096] = {0};
+        for (uint32_t i = 0; i < sz / 4096; i++)
+        {
+            fr = f_write(&ramFile, zero, 4096, NULL);
+            if (FR_OK != fr)
+                return fr;
+        }
+    */
     return fr;
 }
 
