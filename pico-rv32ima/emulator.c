@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include "pico/stdlib.h"
 
+#include "pico/util/queue.h"
+
 #include "sdram.h"
 #include "emulator.h"
 
@@ -87,6 +89,8 @@ uint8_t MINIRV32_LOAD1(uint32_t ofs)
 
 #include "mini-rv32ima.h"
 
+extern queue_t screen_queue, kb_queue;
+
 static void DumpState(struct MiniRV32IMAState *core);
 struct MiniRV32IMAState core;
 
@@ -161,12 +165,16 @@ void rvEmulator()
 // Keyboard
 static int IsKBHit()
 {
-    return 0;
+    if(queue_is_empty(&kb_queue))
+        return 0;
+    else return 1;
 }
 
 static int ReadKBByte()
 {
-    return -1;
+    char c;
+    queue_remove_blocking(&kb_queue, &c);
+    return c;
 }
 
 // Exceptions and UART
@@ -224,13 +232,10 @@ static void HandleOtherCSRWrite(uint8_t *image, uint16_t csrno, uint32_t value)
 
 static uint32_t HandleControlStore(uint32_t addy, uint32_t val)
 {
-    static uint8_t pullreg = 0;
-    static uint8_t upreg = 0;
-
     if (addy == 0x10000000) // UART 8250 / 16550 Data Buffer
     {
-        printf("%c", val);
-        fflush(stdout);
+        char c = val;
+        queue_try_add(&screen_queue, &c);
     }
 
     return 0;
@@ -250,7 +255,7 @@ static uint32_t HandleControlLoad(uint32_t addy)
 static uint64_t GetTimeMicroseconds()
 {
     absolute_time_t t = get_absolute_time();
-    return to_ms_since_boot(t) / 10;
+    return to_us_since_boot(t)/1000;
 }
 
 static void MiniSleep()

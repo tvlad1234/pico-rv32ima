@@ -6,7 +6,7 @@
 #include "ff.h"
 
 #define CACHE_BLK_NUM 32
-#define CACHE_BLK_KB 2
+#define CACHE_BLK_KB 4
 
 void accessSDRAM(uint32_t addr, uint8_t size, bool write, void *bufP);
 FRESULT loadFileIntoRAM(const char * imageFilename, uint32_t addr);
