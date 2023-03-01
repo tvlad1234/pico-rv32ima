@@ -22,7 +22,6 @@ CacheBlock blocks[CACHE_BLK_NUM] = {0};
 CacheBlock *blockList[CACHE_BLK_NUM];
 
 uint8_t usedBlocks = 0;
-
 uint64_t memAccesses = 0;
 
 CacheBlock *leastRecentlyUsed()
@@ -46,7 +45,7 @@ void flushBlock(CacheBlock *b)
         fr = f_lseek(&ramFile, b->startAddress);
         if (fr != FR_OK)
         {
-            printf("Seek error at address %d!\n", b->startAddress);
+          //  printf("Seek error at address %d!\n", b->startAddress);
             while (1)
                 tight_loop_contents();
         }
@@ -54,7 +53,7 @@ void flushBlock(CacheBlock *b)
         fr = f_write(&ramFile, b->contents, CACHE_BLK_BYTES, NULL);
         if (fr != FR_OK)
         {
-            printf("Write error at address %d!\n", b->startAddress);
+          //  printf("Write error at address %d!\n", b->startAddress);
             while (1)
                 tight_loop_contents();
         }
@@ -73,14 +72,14 @@ void fetchBlock(uint32_t addr, CacheBlock *b)
     fr = f_lseek(&ramFile, b->startAddress);
     if (fr != FR_OK)
     {
-        printf("Seek error at address %d!\n", b->startAddress);
+       // printf("Seek error at address %d!\n", b->startAddress);
         while (1)
             tight_loop_contents();
     }
     fr = f_read(&ramFile, b->contents, CACHE_BLK_BYTES, NULL);
     if (fr != FR_OK)
     {
-        printf("Read error at address %d!\n", b->startAddress);
+      //  printf("Read error at address %d!\n", b->startAddress);
         while (1)
             tight_loop_contents();
     }
@@ -145,12 +144,6 @@ CacheBlock *whereCached(uint32_t addr)
     CacheBlock * b = binarySearch(blockList, usedBlocks, addr);
     return b;
 
-    for (int i = 0; i < usedBlocks; i++)
-        if (blockList[i]->wasUsed && (addr >= blockList[i]->startAddress && addr < blockList[i]->startAddress + CACHE_BLK_BYTES))
-            return blockList[i];
-
-    //   printf("Block %d is not cached\n", blockNum);
-
     return NULL;
 }
 
@@ -214,23 +207,12 @@ void loadDataIntoRAM(const unsigned char *d, uint32_t addr, uint32_t size)
         writeCachedRAMByte(addr++, *(d++));
 }
 
-int getFileSize(const char *fname)
-{
-    FIL f;
-    FRESULT fr = f_open(&f, fname, FA_READ);
-    if (FR_OK != fr && FR_EXIST != fr)
-        return -1;
-
-    int s = f_size(&f);
-    fr = f_close(&f);
-    return s;
-}
-
 FRESULT openSDRAMfile(const char *ramFilename, uint32_t sz)
 {
     FRESULT fr = f_open(&ramFile, ramFilename, FA_WRITE | FA_READ);
     if (FR_OK != fr)
         return fr;
+
     /*
         uint8_t zero[4096] = {0};
         for (uint32_t i = 0; i < sz / 4096; i++)
@@ -240,6 +222,7 @@ FRESULT openSDRAMfile(const char *ramFilename, uint32_t sz)
                 return fr;
         }
     */
+
     return fr;
 }
 

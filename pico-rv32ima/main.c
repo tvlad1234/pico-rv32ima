@@ -24,7 +24,7 @@ const char *const imageFilename = "0:Image";
 const char *const imageFilename = "0:baremetal.bin";
 #endif
 
-#define IO_QUEUE_LEN 50
+#define IO_QUEUE_LEN 15
 
 queue_t screen_queue, kb_queue;
 
@@ -33,12 +33,10 @@ void core1_entry();
 
 int main()
 {
-	vreg_set_voltage(VREG_VOLTAGE_1_25); // overvolt the core just a bit
-	set_sys_clock_khz(180000, true);	 // overclock to 200MHz (from 125MHz)
+	vreg_set_voltage(VREG_VOLTAGE_MAX); // overvolt the core just a bit
+	set_sys_clock_khz(375000, true);	// overclock to 375 MHz (from 125MHz)
 	sleep_ms(5);
 
-	//	 stdio_init_all();
-	// stdio_uart_init_full(uart0, 115200, 0, 1);
 	tusb_init();
 	time_init();
 
@@ -52,7 +50,6 @@ int main()
 	while (true)
 	{
 		tud_task();
-
 		cdc_task();
 	}
 }
@@ -81,12 +78,11 @@ void core1_entry()
 		printf("Error closing RAM file: %s (%d)\n", FRESULT_str(fr), fr);
 	f_unmount(pSD0->pcName);
 
-	puts("Goodbye, world!");
-	for (;;)
-		;
+	while (true)
+		tight_loop_contents();
 }
 
-uint8_t buf[64];
+uint8_t buf[IO_QUEUE_LEN];
 void cdc_task(void)
 {
 
@@ -96,21 +92,15 @@ void cdc_task(void)
 		queue_remove_blocking(&screen_queue, &c);
 		tud_cdc_write_char(c);
 	}
-	
 
-	if(tud_cdc_available())
+	if (tud_cdc_available())
 	{
-		
-        uint32_t count = tud_cdc_read(buf, sizeof(buf));
+		uint32_t count = tud_cdc_read(buf, sizeof(buf));
 
-		for(int i=0; i<count; i++)
-		{
-			queue_try_add(&kb_queue, buf[i]);
-			//tud_cdc_write_char(buf[i]);
-		}
-
+		for (int i = 0; i < count; i++)
+			queue_try_add(&kb_queue, &buf[i]);
+			
 	}
 
 	tud_cdc_write_flush();
-
 }

@@ -11,6 +11,11 @@
 #include "default64mbdtc.h"
 #endif
 
+int time_divisor = 18;
+int fixed_update = false;
+int do_sleep = 0;
+int single_step = 0;
+
 uint32_t ram_amt = RAM_MB * 1024 * 1024;
 
 static uint32_t HandleException(uint32_t ir, uint32_t retval);
@@ -107,16 +112,12 @@ void rvEmulator()
     uint32_t dtbRamValue = (validram >> 24) | (((validram >> 16) & 0xff) << 8) | (((validram >> 8) & 0xff) << 16) | ((validram & 0xff) << 24);
     MINIRV32_STORE4(dtb_ptr + 0x13c, dtbRamValue);
 
-    core.pc = MINIRV32_RAM_IMAGE_OFFSET;
     core.regs[10] = 0x00;                                                // hart ID
     core.regs[11] = dtb_ptr ? (dtb_ptr + MINIRV32_RAM_IMAGE_OFFSET) : 0; // dtb_pa (Must be valid pointer) (Should be pointer to dtb)
     core.extraflags |= 3;                                                // Machine-mode.
 #endif
 
-    int time_divisor = 1;
-    int fixed_update = false;
-    int do_sleep = 0;
-    int single_step = 0;
+    core.pc = MINIRV32_RAM_IMAGE_OFFSET;
     long long instct = -1;
 
     uint64_t rt;
@@ -165,9 +166,10 @@ void rvEmulator()
 // Keyboard
 static int IsKBHit()
 {
-    if(queue_is_empty(&kb_queue))
+    if (queue_is_empty(&kb_queue))
         return 0;
-    else return 1;
+    else
+        return 1;
 }
 
 static int ReadKBByte()
@@ -255,12 +257,12 @@ static uint32_t HandleControlLoad(uint32_t addy)
 static uint64_t GetTimeMicroseconds()
 {
     absolute_time_t t = get_absolute_time();
-    return to_us_since_boot(t)/1000;
+    return to_us_since_boot(t);
 }
 
 static void MiniSleep()
 {
-    sleep_us(500);
+    sleep_ms(500);
 }
 
 static void DumpState(struct MiniRV32IMAState *core)
