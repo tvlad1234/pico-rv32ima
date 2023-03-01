@@ -9,6 +9,7 @@ This project uses [CNLohr's mini-rv32ima](https://github.com/cnlohr/mini-rv32ima
 - a Raspberry Pi Pico (or other RP2040 board)
 - an SD card (any capacity will work, the emulator only uses about 20MB of it)
 
+_This project overvolts and overclocks the RP2040! Use at own risk!_
 ## How to use
 The hardware is configured as follows:
 - The SD card is connected via SDIO, with the following pinout:
