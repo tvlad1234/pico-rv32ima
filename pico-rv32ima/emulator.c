@@ -2,12 +2,19 @@
 #include <stdlib.h>
 #include "pico/stdlib.h"
 
+#include "pico/util/queue.h"
+
 #include "sdram.h"
 #include "emulator.h"
 
 #ifdef RUN_LINUX
 #include "default64mbdtc.h"
 #endif
+
+int time_divisor = 18;
+int fixed_update = false;
+int do_sleep = 0;
+int single_step = 0;
 
 uint32_t ram_amt = RAM_MB * 1024 * 1024;
 
@@ -87,6 +94,8 @@ uint8_t MINIRV32_LOAD1(uint32_t ofs)
 
 #include "mini-rv32ima.h"
 
+extern queue_t screen_queue, kb_queue;
+
 static void DumpState(struct MiniRV32IMAState *core);
 struct MiniRV32IMAState core;
 
@@ -103,16 +112,12 @@ void rvEmulator()
     uint32_t dtbRamValue = (validram >> 24) | (((validram >> 16) & 0xff) << 8) | (((validram >> 8) & 0xff) << 16) | ((validram & 0xff) << 24);
     MINIRV32_STORE4(dtb_ptr + 0x13c, dtbRamValue);
 
-    core.pc = MINIRV32_RAM_IMAGE_OFFSET;
     core.regs[10] = 0x00;                                                // hart ID
     core.regs[11] = dtb_ptr ? (dtb_ptr + MINIRV32_RAM_IMAGE_OFFSET) : 0; // dtb_pa (Must be valid pointer) (Should be pointer to dtb)
     core.extraflags |= 3;                                                // Machine-mode.
 #endif
 
-    int time_divisor = 1;
-    int fixed_update = false;
-    int do_sleep = 0;
-    int single_step = 0;
+    core.pc = MINIRV32_RAM_IMAGE_OFFSET;
     long long instct = -1;
 
     uint64_t rt;
@@ -161,12 +166,17 @@ void rvEmulator()
 // Keyboard
 static int IsKBHit()
 {
-    return 0;
+    if (queue_is_empty(&kb_queue))
+        return 0;
+    else
+        return 1;
 }
 
 static int ReadKBByte()
 {
-    return -1;
+    char c;
+    queue_remove_blocking(&kb_queue, &c);
+    return c;
 }
 
 // Exceptions and UART
@@ -224,13 +234,10 @@ static void HandleOtherCSRWrite(uint8_t *image, uint16_t csrno, uint32_t value)
 
 static uint32_t HandleControlStore(uint32_t addy, uint32_t val)
 {
-    static uint8_t pullreg = 0;
-    static uint8_t upreg = 0;
-
     if (addy == 0x10000000) // UART 8250 / 16550 Data Buffer
     {
-        printf("%c", val);
-        fflush(stdout);
+        char c = val;
+        queue_try_add(&screen_queue, &c);
     }
 
     return 0;
@@ -250,12 +257,12 @@ static uint32_t HandleControlLoad(uint32_t addy)
 static uint64_t GetTimeMicroseconds()
 {
     absolute_time_t t = get_absolute_time();
-    return to_ms_since_boot(t) / 10;
+    return to_us_since_boot(t);
 }
 
 static void MiniSleep()
 {
-    sleep_us(500);
+    sleep_ms(500);
 }
 
 static void DumpState(struct MiniRV32IMAState *core)
