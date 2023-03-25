@@ -11,7 +11,7 @@ This project uses [CNLohr's mini-rv32ima](https://github.com/cnlohr/mini-rv32ima
 
 _This project overvolts and overclocks the RP2040! Use at own risk!_
 ## How to use
-The hardware is configured as follows:
+By default, the hardware is configured as follows:
 - The SD card is connected via SDIO, with the following pinout:
     - CLK: GPIO17
     - CMD: GPIO18
@@ -21,8 +21,13 @@ The hardware is configured as follows:
     - D3:  GPIO22
 - The text console is accessible over USB CDC. 
 
+The hardware and emulator configuration can be modified in the [rv32_config.h](pico-rv32ima/rv32_config.h) file. SPI interface is also supported for the SD card.
+
 The SD card needs to be formatted as FAT32 or exFAT. I tested block sizes from 1024 to 4096 bytes and they all worked. The Linux kernel and filesystem are provided in the [Image](Image) file (which comes from [this repository](https://github.com/cnlohr/mini-rv32ima-images)). It must be placed in the root of the SD card, along with an empty file called `ram.bin` which should be at least 16 megabytes in size.
 
+## TO DO
+- replace the silly SD-based RAM emulation with real SPI RAM chips
+
 ## What it does
-On startup, the emulator will copy the Linux image into RAM. After a few seconds, Linux kernel messages will start streaming on the console. The boot process takes 10 to 15 minutes, after which a login shell will be presented. The username is `root` and there is no password. Unfortunately, after entering the username, it hangs up indefinitely, without ever reaching the shell. I think this happens due to the fact that the emulated CPU is too slow and can't handle the timer interrupts fast enough (which are already not real-time, as they have to be divided by 10 or 20 to get the system to boot).
+On startup, the emulator will copy the Linux image into RAM. After a few seconds, Linux kernel messages will start streaming on the console. The boot process takes 10 to 15 minutes, after which a login shell will be presented. The username is `root` and there is no password. Unfortunately, after entering the username, it hangs up indefinitely, without ever reaching the shell. I am still investigating this issue, hoping to solve it after adding proper SPI RAM to the system.
 ![Console boot log](buildrootLogin.jpg)

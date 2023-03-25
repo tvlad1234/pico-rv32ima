@@ -1,10 +1,10 @@
 add_executable(pico-rv32ima
     main.c
-	hw_config.c
+	sd_hw_config.c
 	sdram.c
 	emulator.c
 	usb_descriptors.c
-    tusb_callbacks.c
+    cdc_console.c
 )
 
 # Add the standard library and FatFS/SPI to the build
@@ -24,8 +24,6 @@ pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
 target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
 
 pico_set_boot_stage2(pico-rv32ima slower_boot2)
-
-#pico_set_binary_type(pico-rv32ima copy_to_ram)
 
 pico_add_extra_outputs(pico-rv32ima)
 
