@@ -5,7 +5,9 @@
 #include "f_util.h"
 #include "ff.h"
 
-#define CACHE_BLK_NUM 200
+#include "rv32_config.h"
+
+#define CACHE_BLK_NUM EMULATOR_RAM_CACHE_BLOCKS
 #define CACHE_BLK_KB 1
 
 void accessSDRAM(uint32_t addr, uint8_t size, bool write, void *bufP);

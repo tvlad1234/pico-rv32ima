@@ -10,13 +10,15 @@
 
 #include "default64mbdtc.h"
 
-int time_divisor = 32;
-int fixed_update = true;
+#include "rv32_config.h"
+
+int time_divisor = EMULATOR_TIME_DIV;
+int fixed_update = EMULATOR_FIXED_UPDATE;
 int do_sleep = 0;
 int single_step = 0;
 int fail_on_all_faults = 0;
 
-uint32_t ram_amt = RAM_MB * 1024 * 1024;
+uint32_t ram_amt = EMULATOR_RAM_MB * 1024 * 1024;
 
 static uint32_t HandleException(uint32_t ir, uint32_t retval);
 static uint32_t HandleControlStore(uint32_t addy, uint32_t val);
