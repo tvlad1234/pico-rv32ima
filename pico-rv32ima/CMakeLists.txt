@@ -1,7 +1,7 @@
 add_executable(pico-rv32ima
     main.c
 	sd_hw_config.c
-	sdram.c
+	psram.c
 	emulator.c
 	usb_descriptors.c
     cdc_console.c

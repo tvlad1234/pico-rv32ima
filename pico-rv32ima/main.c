@@ -8,11 +8,10 @@
 #include "ff.h"
 #include "hw_config.h"
 
-#include "sdram.h"
+#include "psram.h"
 #include "emulator.h"
 #include "cdc_console.h"
 
-const char ramFilename[] = "0:ram.bin";
 const char *const imageFilename = "0:Image";
 
 void core1_entry();
@@ -21,7 +20,7 @@ int main()
 {
 	vreg_set_voltage(VREG_VOLTAGE_MAX); // overvolt the core just a bit
 	set_sys_clock_khz(375000, true);	// overclock to 375 MHz (from 125MHz)
-	sleep_ms(5);
+	sleep_ms(25);
 
 	tusb_init();
 
@@ -41,15 +40,17 @@ int main()
 
 void core1_entry()
 {
+
+	int r = initPSRAM();
+	if (r)
+		cdc_panic("Error initalizing PSRAM!\n");
+
+	cdc_printf("PSRAM init OK!\n");
+
 	sd_card_t *pSD0 = sd_get_by_num(0);
 	FRESULT fr = f_mount(&pSD0->fatfs, pSD0->pcName, 1);
 	if (FR_OK != fr)
 		cdc_panic("SD mount error: %s (%d)\n", FRESULT_str(fr), fr);
-
-	fr = openSDRAMfile(ramFilename, ram_amt);
-	if (FR_OK != fr && FR_EXIST != fr)
-		cdc_panic("Error opening RAM file: %s (%d)\n", ramFilename, FRESULT_str(fr), fr);
-	cdc_printf("RAM file opened sucessfuly!\n");
 
 	fr = loadFileIntoRAM(imageFilename, 0);
 	if (FR_OK != fr)
@@ -57,11 +58,6 @@ void core1_entry()
 	cdc_printf("Image loaded sucessfuly!\n");
 
 	rvEmulator();
-
-	fr = closeSDRAMfile();
-	if (FR_OK != fr)
-		cdc_panic("Error closing RAM file: %s (%d)\n", FRESULT_str(fr), fr);
-	f_unmount(pSD0->pcName);
 
 	while (true)
 		tight_loop_contents();
