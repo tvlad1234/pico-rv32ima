@@ -74,7 +74,7 @@ int initPSRAM()
 
     pio_spi_init(pioSpi.pio, pioSpi.sm, offset,
                  8,     // 8 bits per SPI frame
-                 2.5,   // 1 MHz @ 125 clk_sys
+                 2.5,   // 40 MHz @ 400 clk_sys
                  false, // CPHA = 0
                  false, // CPOL = 0
                  PSRAM_SPI_PIN_CK,
