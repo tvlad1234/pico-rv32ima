@@ -5,7 +5,7 @@
 #include "pico/util/queue.h"
 
 #include "cdc_console.h"
-#include "sdram.h"
+#include "psram.h"
 #include "emulator.h"
 
 #include "default64mbdtc.h"
@@ -14,7 +14,7 @@
 
 int time_divisor = EMULATOR_TIME_DIV;
 int fixed_update = EMULATOR_FIXED_UPDATE;
-int do_sleep = 0;
+int do_sleep = 1;
 int single_step = 0;
 int fail_on_all_faults = 0;
 
@@ -63,37 +63,37 @@ static void MiniSleep();
 
 void MINIRV32_STORE4(uint32_t ofs, uint32_t val)
 {
-    accessSDRAM(ofs, 4, true, &val);
+    accessPSRAM(ofs, 4, true, &val);
 }
 
 void MINIRV32_STORE2(uint32_t ofs, uint16_t val)
 {
-    accessSDRAM(ofs, 2, true, &val);
+    accessPSRAM(ofs, 2, true, &val);
 }
 
 void MINIRV32_STORE1(uint32_t ofs, uint8_t val)
 {
-    accessSDRAM(ofs, 1, true, &val);
+    accessPSRAM(ofs, 1, true, &val);
 }
 
 uint32_t MINIRV32_LOAD4(uint32_t ofs)
 {
     uint32_t val;
-    accessSDRAM(ofs, 4, false, &val);
+    accessPSRAM(ofs, 4, false, &val);
     return val;
 }
 
 uint16_t MINIRV32_LOAD2(uint32_t ofs)
 {
     uint16_t val;
-    accessSDRAM(ofs, 2, false, &val);
+    accessPSRAM(ofs, 2, false, &val);
     return val;
 }
 
 uint8_t MINIRV32_LOAD1(uint32_t ofs)
 {
     uint8_t val;
-    accessSDRAM(ofs, 1, false, &val);
+    accessPSRAM(ofs, 1, false, &val);
     return val;
 }
 
@@ -105,7 +105,7 @@ struct MiniRV32IMAState core;
 void rvEmulator()
 {
 
-    uint32_t dtb_ptr = ram_amt - sizeof(default64mbdtb) - sizeof(struct MiniRV32IMAState);
+    uint32_t dtb_ptr = ram_amt - sizeof(default64mbdtb);
     const uint32_t *dtb = default64mbdtb;
 
     uint32_t validram = dtb_ptr;
@@ -157,7 +157,6 @@ void rvEmulator()
             break;
         }
     }
-
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -241,7 +240,7 @@ static uint32_t HandleControlLoad(uint32_t addy)
     return 0;
 }
 
-// Timing 
+// Timing
 static uint64_t GetTimeMicroseconds()
 {
     absolute_time_t t = get_absolute_time();
@@ -263,5 +262,5 @@ static uint64_t GetTimeMicroseconds()
 
 static void MiniSleep()
 {
-    sleep_ms(500);
+    sleep_ms(1);
 }

@@ -8,22 +8,31 @@
 // RAM size in megabytes
 #define EMULATOR_RAM_MB 16
 
-// Number of 1kb RAM cache blocks
-#define EMULATOR_RAM_CACHE_BLOCKS 200
-
-// Time divisor 
-#define EMULATOR_TIME_DIV 32
+// Time divisor
+#define EMULATOR_TIME_DIV 4
 
 // Tie microsecond clock to instruction count
-#define EMULATOR_FIXED_UPDATE false 
+#define EMULATOR_FIXED_UPDATE false
 
+/******************/
+/* PSRAM config
+/******************/
+
+// Pins for the PSRAM SPI interface
+#define PSRAM_SPI_PIN_CK 10
+#define PSRAM_SPI_PIN_TX 11
+#define PSRAM_SPI_PIN_RX 12
+
+// Select lines for the two PSRAM chips
+#define PSRAM_SPI_PIN_S1 21
+#define PSRAM_SPI_PIN_S2 22
 
 /****************/
 /* SD card config
 /***************/
 
 // Set to 1 to use SDIO interface for the SD. Set to 0 to use SPI.
-#define SD_USE_SDIO 1
+#define SD_USE_SDIO 0
 
 #if SD_USE_SDIO
 
