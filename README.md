@@ -33,9 +33,6 @@ The hardware and emulator configuration can be modified in the [rv32_config.h](p
 
 The SD card needs to be formatted as FAT32 or exFAT. I tested block sizes from 1024 to 4096 bytes and they all worked. The Linux kernel and filesystem are provided in the [Image](Image) file (which comes from [this repository](https://github.com/cnlohr/mini-rv32ima-images)). It must be placed in the root of the SD card.
 
-## TO DO
-- try to use implement PSRAM SPI using PIO (should be faster than the regular SPI interface)
-
 ## What it does
-On startup, the emulator will copy the Linux image into RAM. After a few seconds, Linux kernel messages will start streaming on the console. The boot process takes 10 to 15 minutes.
-![Console boot log](buildrootLogin.jpg)
+On startup, the emulator will copy the Linux image into RAM. After a few seconds, Linux kernel messages will start streaming on the console. The boot process takes about 5 minutes.
+![Console boot log](screenshot.jpg)

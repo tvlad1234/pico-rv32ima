@@ -5,6 +5,7 @@ add_executable(pico-rv32ima
 	emulator.c
 	usb_descriptors.c
     cdc_console.c
+	pio_spi.c
 )
 
 # Add the standard library and FatFS/SPI to the build
@@ -14,9 +15,12 @@ target_link_libraries(pico-rv32ima
 	pico_time
 	pico_multicore
 	hardware_vreg
+	hardware_pio
 	tinyusb_device 
 	tinyusb_board
 )
+
+pico_generate_pio_header(pico-rv32ima ${CMAKE_CURRENT_LIST_DIR}/spi.pio)
 
 target_include_directories(pico-rv32ima PUBLIC ${CMAKE_CURRENT_LIST_DIR}/tusb_inc )
 

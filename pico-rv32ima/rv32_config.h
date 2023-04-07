@@ -9,7 +9,7 @@
 #define EMULATOR_RAM_MB 16
 
 // Time divisor
-#define EMULATOR_TIME_DIV 16
+#define EMULATOR_TIME_DIV 4
 
 // Tie microsecond clock to instruction count
 #define EMULATOR_FIXED_UPDATE false
@@ -17,12 +17,6 @@
 /******************/
 /* PSRAM config
 /******************/
-
-// SPI instance used for PSRAM
-#define PSRAM_SPI_INST spi1
-
-// Frequency of PSRAM SPI interface in MHz
-#define PSRAM_SPI_FREQ 144
 
 // Pins for the PSRAM SPI interface
 #define PSRAM_SPI_PIN_CK 10

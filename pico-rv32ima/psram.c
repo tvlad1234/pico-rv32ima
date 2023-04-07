@@ -5,6 +5,7 @@
 #include "hw_config.h"
 #include "hardware/spi.h"
 
+#include "pio_spi.h"
 #include "rv32_config.h"
 #include "cdc_console.h"
 #include "psram.h"
@@ -17,6 +18,11 @@
 #define PSRAM_CMD_WRITE 0x02
 
 #define RAM_HALF (EMULATOR_RAM_MB * 512 * 1024)
+
+pio_spi_inst_t pioSpi = {
+    .pio = pio0,
+    .sm = 0,
+    .cs_pin = PICO_DEFAULT_SPI_CSN_PIN};
 
 void selectPsramChip(uint c)
 {
@@ -32,8 +38,7 @@ void sendPsramCommand(uint8_t cmd, uint chip)
 {
     if (chip)
         selectPsramChip(chip);
-
-    spi_write_blocking(PSRAM_SPI_INST, &cmd, 1);
+    pio_spi_write8_blocking(&pioSpi, &cmd, 1);
 
     if (chip)
         deSelectPsramChip(chip);
@@ -50,20 +55,13 @@ void psramReadID(uint chip, uint8_t *dst)
 {
     selectPsramChip(chip);
     sendPsramCommand(PSRAM_CMD_READ_ID, 0);
-
-    spi_write_blocking(PSRAM_SPI_INST, dst, 3);
-    spi_read_blocking(PSRAM_SPI_INST, 0, dst, 6);
+    pio_spi_write8_blocking(&pioSpi, dst, 3);
+    pio_spi_read8_blocking(&pioSpi, dst, 6);
     deSelectPsramChip(chip);
 }
 
 int initPSRAM()
 {
-    spi_init(PSRAM_SPI_INST, PSRAM_SPI_FREQ * 1000000);
-
-    gpio_set_function(PSRAM_SPI_PIN_TX, GPIO_FUNC_SPI);
-    gpio_set_function(PSRAM_SPI_PIN_RX, GPIO_FUNC_SPI);
-    gpio_set_function(PSRAM_SPI_PIN_CK, GPIO_FUNC_SPI);
-
     gpio_init(PSRAM_SPI_PIN_S1);
     gpio_set_dir(PSRAM_SPI_PIN_S1, true);
     gpio_init(PSRAM_SPI_PIN_S2);
@@ -71,6 +69,17 @@ int initPSRAM()
 
     deSelectPsramChip(PSRAM_SPI_PIN_S1);
     deSelectPsramChip(PSRAM_SPI_PIN_S2);
+
+    uint offset = pio_add_program(pioSpi.pio, &spi_cpha0_program);
+
+    pio_spi_init(pioSpi.pio, pioSpi.sm, offset,
+                 8,     // 8 bits per SPI frame
+                 2.5,   // 1 MHz @ 125 clk_sys
+                 false, // CPHA = 0
+                 false, // CPOL = 0
+                 PSRAM_SPI_PIN_CK,
+                 PSRAM_SPI_PIN_TX,
+                 PSRAM_SPI_PIN_RX);
 
     sleep_ms(10);
 
@@ -106,7 +115,7 @@ void accessPSRAM(uint32_t addr, size_t size, bool write, void *bufP)
         cmdSize++;
     }
 
-    if(addr >= RAM_HALF)
+    if (addr >= RAM_HALF)
     {
         ramchip = PSRAM_SPI_PIN_S2;
         addr -= RAM_HALF;
@@ -117,13 +126,12 @@ void accessPSRAM(uint32_t addr, size_t size, bool write, void *bufP)
     cmdAddr[3] = addr & 0xff;
 
     selectPsramChip(ramchip);
-
-    spi_write_blocking(PSRAM_SPI_INST, cmdAddr, cmdSize);
+    pio_spi_write8_blocking(&pioSpi, cmdAddr, cmdSize);
 
     if (write)
-        spi_write_blocking(PSRAM_SPI_INST, b, size);
+        pio_spi_write8_blocking(&pioSpi, b, size);
     else
-        spi_read_blocking(PSRAM_SPI_INST, 0, b, size);
+        pio_spi_read8_blocking(&pioSpi, b, size);
 
     deSelectPsramChip(ramchip);
 }

@@ -105,7 +105,7 @@ struct MiniRV32IMAState core;
 void rvEmulator()
 {
 
-    uint32_t dtb_ptr = ram_amt - sizeof(default64mbdtb) - sizeof(struct MiniRV32IMAState);
+    uint32_t dtb_ptr = ram_amt - sizeof(default64mbdtb);
     const uint32_t *dtb = default64mbdtb;
 
     uint32_t validram = dtb_ptr;
@@ -263,5 +263,4 @@ static uint64_t GetTimeMicroseconds()
 static void MiniSleep()
 {
     sleep_ms(1);
-    // cdc_puts("\nSleep\n!");
 }

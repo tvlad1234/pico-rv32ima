@@ -19,7 +19,7 @@ void core1_entry();
 int main()
 {
 	vreg_set_voltage(VREG_VOLTAGE_MAX); // overvolt the core just a bit
-	set_sys_clock_khz(375000, true);	// overclock to 375 MHz (from 125MHz)
+	set_sys_clock_khz(400000, true);	// overclock to 400 MHz (from 125MHz)
 	sleep_ms(25);
 
 	tusb_init();
