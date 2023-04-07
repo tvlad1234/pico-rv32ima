@@ -92,7 +92,7 @@ struct MiniRV32IMAState
 	// Note: only a few bits are used.  (Machine = 3, User = 0)
 	// Bits 0..1 = privilege.
 	// Bit 2 = WFI (Wait for interrupt)
-	// Bit 3 = Load/Store has a reservation.
+	// Bit 3+ = Load/Store reservation LSBs.
 	uint32_t extraflags;
 };
 
@@ -124,25 +124,35 @@ MINIRV32_DECORATE int32_t MiniRV32IMAStep( struct MiniRV32IMAState * state, uint
 	if( CSR( extraflags ) & 4 )
 		return 1;
 
-	int icount;
+	uint32_t trap = 0;
+	uint32_t rval = 0;
+	uint32_t pc = CSR( pc );
+	uint32_t cycle = CSR( cyclel );
 
-	for( icount = 0; icount < count; icount++ )
+	if( ( CSR( mip ) & (1<<7) ) && ( CSR( mie ) & (1<<7) /*mtie*/ ) && ( CSR( mstatus ) & 0x8 /*mie*/) )
+	{
+		// Timer interrupt.
+		trap = 0x80000007;
+		pc -= 4;
+	}
+	else // No timer interrupt?  Execute a bunch of instructions.
+	for( int icount = 0; icount < count; icount++ )
 	{
 		uint32_t ir = 0;
-		uint32_t trap = 0; // If positive, is a trap or interrupt.  If negative, is fatal error.
-		uint32_t rval = 0;
-
-		// Increment both wall-clock and instruction count time.  (NOTE: Not strictly needed to run Linux)
-		CSR( cyclel )++;
-		if( CSR( cyclel ) == 0 ) CSR( cycleh )++;
-
-		uint32_t pc = CSR( pc );
+		rval = 0;
+		cycle++;
 		uint32_t ofs_pc = pc - MINIRV32_RAM_IMAGE_OFFSET;
 
 		if( ofs_pc  >= MINI_RV32_RAM_SIZE )
+		{
 			trap = 1 + 1;  // Handle access violation on instruction read.
+			break;
+		}
 		else if( ofs_pc & 3 )
+		{
 			trap = 1 + 0;  //Handle PC-misaligned access
+			break;
+		}
 		else
 		{
 			ir = MINIRV32_LOAD4( ofs_pc );
@@ -339,7 +349,7 @@ MINIRV32_DECORATE int32_t MiniRV32IMAStep( struct MiniRV32IMAState * state, uint
 						case 0x340: rval = CSR( mscratch ); break;
 						case 0x305: rval = CSR( mtvec ); break;
 						case 0x304: rval = CSR( mie ); break;
-						case 0xC00: rval = CSR( cyclel ); break;
+						case 0xC00: rval = cycle; break;
 						case 0x344: rval = CSR( mip ); break;
 						case 0x341: rval = CSR( mepc ); break;
 						case 0x300: rval = CSR( mstatus ); break; //mstatus
@@ -447,8 +457,14 @@ MINIRV32_DECORATE int32_t MiniRV32IMAStep( struct MiniRV32IMAState * state, uint
 						uint32_t dowrite = 1;
 						switch( irmid )
 						{
-							case 0b00010: dowrite = 0; CSR( extraflags ) |= 8; break; //LR.W
-							case 0b00011: rval = !(CSR( extraflags ) & 8); break; //SC.W (Lie and always say it's good)
+							case 0b00010: //LR.W
+								dowrite = 0;
+								CSR( extraflags ) = (CSR( extraflags ) & 0b111) | (rs1<<3);
+								break;
+							case 0b00011:  //SC.W (Make sure we have a slot, and, it's valid)
+								rval = ( CSR( extraflags ) >> 3 != ( rs1 & 0x1fffffff ) );  // Validate that our reservation slot is OK.
+								dowrite = !rval; // Only write if slot is valid.
+								break;
 							case 0b00001: break; //AMOSWAP.W
 							case 0b00000: rs2 += rval; break; //AMOADD.W
 							case 0b00100: rs2 ^= rval; break; //AMOXOR.W
@@ -467,49 +483,51 @@ MINIRV32_DECORATE int32_t MiniRV32IMAStep( struct MiniRV32IMAState * state, uint
 				default: trap = (2+1); // Fault: Invalid opcode.
 			}
 
-			if( trap == 0 )
+			// If there was a trap, do NOT allow register writeback.
+			if( trap )
+				break;
+
+			if( rdid )
 			{
-				if( rdid )
-				{
-					REGSET( rdid, rval );
-				} // Write back register.
-				else if( ( CSR( mip ) & (1<<7) ) && ( CSR( mie ) & (1<<7) /*mtie*/ ) && ( CSR( mstatus ) & 0x8 /*mie*/) )
-				{
-					trap = 0x80000007; // Timer interrupt.
-				}
+				REGSET( rdid, rval ); // Write back register.
 			}
 		}
 
 		MINIRV32_POSTEXEC( pc, ir, trap );
 
-		// Handle traps and interrupts.
-		if( trap )
-		{
-			if( trap & 0x80000000 ) // If prefixed with 1 in MSB, it's an interrupt, not a trap.
-			{
-				CSR( extraflags ) &= ~8;
-				SETCSR( mcause, trap );
-				SETCSR( mtval, 0 );
-				pc += 4; // PC needs to point to where the PC will return to.
-			}
-			else
-			{
-				SETCSR( mcause,  trap - 1 );
-				SETCSR( mtval, (trap > 5 && trap <= 8)? rval : pc );
-			}
-			SETCSR( mepc, pc ); //TRICKY: The kernel advances mepc automatically.
-			//CSR( mstatus ) & 8 = MIE, & 0x80 = MPIE
-			// On an interrupt, the system moves current MIE into MPIE
-			SETCSR( mstatus, (( CSR( mstatus ) & 0x08) << 4) | (( CSR( extraflags ) & 3 ) << 11) );
-			pc = (CSR( mtvec ) - 4);
-
-			// XXX TODO: Do we actually want to check here? Is this correct?
-			if( !(trap & 0x80000000) )
-				CSR( extraflags ) |= 3;
-		}
-
-		SETCSR( pc, pc + 4 );
+		pc += 4;
 	}
+
+	// Handle traps and interrupts.
+	if( trap )
+	{
+		if( trap & 0x80000000 ) // If prefixed with 1 in MSB, it's an interrupt, not a trap.
+		{
+			SETCSR( mcause, trap );
+			SETCSR( mtval, 0 );
+			pc += 4; // PC needs to point to where the PC will return to.
+		}
+		else
+		{
+			SETCSR( mcause,  trap - 1 );
+			SETCSR( mtval, (trap > 5 && trap <= 8)? rval : pc );
+		}
+		SETCSR( mepc, pc ); //TRICKY: The kernel advances mepc automatically.
+		//CSR( mstatus ) & 8 = MIE, & 0x80 = MPIE
+		// On an interrupt, the system moves current MIE into MPIE
+		SETCSR( mstatus, (( CSR( mstatus ) & 0x08) << 4) | (( CSR( extraflags ) & 3 ) << 11) );
+		pc = (CSR( mtvec ) - 4);
+
+		// If trapping, always enter machine mode.
+		CSR( extraflags ) |= 3;
+
+		trap = 0;
+		pc += 4;
+	}
+
+	if( CSR( cyclel ) > cycle ) CSR( cycleh )++;
+	SETCSR( cyclel, cycle );
+	SETCSR( pc, pc );
 	return 0;
 }
 
