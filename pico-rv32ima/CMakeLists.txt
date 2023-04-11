@@ -29,5 +29,6 @@ target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
 
 pico_set_boot_stage2(pico-rv32ima slower_boot2)
 
+pico_set_binary_type(pico-rv32ima copy_to_ram)
 pico_add_extra_outputs(pico-rv32ima)
 
