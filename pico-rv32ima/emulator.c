@@ -244,19 +244,6 @@ static uint32_t HandleControlLoad(uint32_t addy)
 static uint64_t GetTimeMicroseconds()
 {
     absolute_time_t t = get_absolute_time();
-
-    static uint32_t prev = 0;
-    static uint32_t upper = 0;
-
-    uint32_t now = to_us_since_boot(t);
-    if (now < prev)
-    {
-        upper += 1;
-    }
-    uint64_t ret = ((uint64_t)upper << 32) | (uint64_t)now;
-    prev = now;
-    return now;
-
     return to_us_since_boot(t);
 }
 
