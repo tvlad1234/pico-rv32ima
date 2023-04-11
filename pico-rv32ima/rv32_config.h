@@ -9,7 +9,7 @@
 #define EMULATOR_RAM_MB 16
 
 // Time divisor
-#define EMULATOR_TIME_DIV 4
+#define EMULATOR_TIME_DIV 6
 
 // Tie microsecond clock to instruction count
 #define EMULATOR_FIXED_UPDATE false
