@@ -3,7 +3,6 @@
 #include "f_util.h"
 #include "ff.h"
 #include "hw_config.h"
-#include "hardware/spi.h"
 
 #include "pio_spi.h"
 #include "rv32_config.h"
@@ -16,6 +15,7 @@
 #define PSRAM_CMD_READ 0x03
 #define PSRAM_CMD_READ_FAST 0x0B
 #define PSRAM_CMD_WRITE 0x02
+#define PSRAM_KGD 0x5D
 
 #define RAM_HALF (EMULATOR_RAM_MB * 512 * 1024)
 
@@ -24,15 +24,8 @@ pio_spi_inst_t pioSpi = {
     .sm = 0,
     .cs_pin = PICO_DEFAULT_SPI_CSN_PIN};
 
-void selectPsramChip(uint c)
-{
-    gpio_put(c, false);
-}
-
-void deSelectPsramChip(uint c)
-{
-    gpio_put(c, true);
-}
+#define selectPsramChip(c) gpio_put(c, false)
+#define deSelectPsramChip(c) gpio_put(c, true)
 
 void sendPsramCommand(uint8_t cmd, uint chip)
 {
@@ -89,13 +82,13 @@ int initPSRAM()
     uint8_t chipId[6];
 
     psramReadID(PSRAM_SPI_PIN_S1, chipId);
-    if (chipId[1] != 0b01011101)
+    if (chipId[1] != PSRAM_KGD)
         return 1;
 
     psramReadID(PSRAM_SPI_PIN_S2, chipId);
-    if (chipId[1] != 0b01011101)
+    if (chipId[1] != PSRAM_KGD)
         return 2;
-
+        
     return 0;
 }
 
