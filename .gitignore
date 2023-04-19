@@ -3,3 +3,6 @@ build/
 
 #ignore .vscode
 .vscode/
+
+#ignore buildroot folder
+linux/buildroot
