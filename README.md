@@ -31,7 +31,7 @@ By default, the hardware is configured as follows:
 
 The hardware and emulator configuration can be modified in the [rv32_config.h](pico-rv32ima/rv32_config.h) file. SDIO interface is also supported for the SD card.
 
-The SD card needs to be formatted as FAT32 or exFAT. I tested block sizes from 1024 to 4096 bytes and they all worked. The Linux kernel and filesystem are provided in the [Image](Image) file (which comes from [this repository](https://github.com/cnlohr/mini-rv32ima-images)). It must be placed in the root of the SD card.
+The SD card needs to be formatted as FAT32 or exFAT. Block sizes from 1024 to 4096 bytes are confirmed to be working. A prebuilt Linux kernel and filesystem image is provided in [this file](linux/Image). It must be placed in the root of the SD card. If you want to build the image yourself, you need to run `make` in the [linux](linux) folder. This will clone the buildroot source tree, apply the necessary config files and and build the kernel and system image.
 
 ## What it does
 On startup, the emulator will copy the Linux image into RAM. After a few seconds, Linux kernel messages will start streaming on the console. The boot process takes about two and a half minutes.
