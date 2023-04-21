@@ -4,7 +4,7 @@
 #include "pico/stdlib.h"
 #include "pico/util/queue.h"
 
-#include "cdc_console.h"
+#include "console.h"
 #include "psram.h"
 #include "emulator.h"
 
@@ -31,7 +31,7 @@ static int ReadKBByte();
 static uint64_t GetTimeMicroseconds();
 static void MiniSleep();
 
-#define MINIRV32WARN(x...) cdc_printf(x);
+#define MINIRV32WARN(x...) console_printf(x);
 #define MINIRV32_DECORATE static
 #define MINI_RV32_RAM_SIZE ram_amt
 #define MINIRV32_IMPLEMENTATION
@@ -150,10 +150,10 @@ void rvEmulator()
         case 0x7777:
             return; // syscon code for restart
         case 0x5555:
-            cdc_printf("POWEROFF@0x%08x%08x\n", core.cycleh, core.cyclel);
+            console_printf("POWEROFF@0x%08x%08x\n", core.cycleh, core.cyclel);
             return; // syscon code for power-off
         default:
-            cdc_printf("Unknown failure\n");
+            console_printf("Unknown failure\n");
             break;
         }
     }

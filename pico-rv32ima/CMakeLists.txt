@@ -4,7 +4,7 @@ add_executable(pico-rv32ima
 	psram.c
 	emulator.c
 	usb_descriptors.c
-    cdc_console.c
+    console.c
 )
 
 # Add the standard library and FatFS/SPI to the build

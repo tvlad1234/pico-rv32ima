@@ -15,6 +15,20 @@
 #define EMULATOR_FIXED_UPDATE false
 
 /******************/
+/* UART config
+/******************/
+
+// UART instance
+#define UART_INSTANCE uart0
+
+// UART Baudrate
+#define UART_BAUD_RATE 115200
+
+// Pins for the UART
+#define UART_TX_PIN 0
+#define UART_RX_PIN 1
+
+/******************/
 /* PSRAM config
 /******************/
 
