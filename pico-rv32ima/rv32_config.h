@@ -74,6 +74,21 @@
 #define SD_SPI_PIN_CLK 18
 #define SD_SPI_PIN_CS 20
 
+
+/*******************/
+/* LCD SPI interface
+/******************/
+
+// SPI instance used for the LCD (if used)
+#define LCD_SPI_INSTANCE spi0
+
+// Pins for the LCD SPI interface (if used)
+#define LCD_PIN_DC 4
+#define LCD_PIN_CS 6
+#define LCD_PIN_RST 5
+#define LCD_PIN_SCK 2
+#define LCD_PIN_TX 3
+
 #endif
 
 #endif

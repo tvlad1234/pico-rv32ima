@@ -11,6 +11,7 @@
 #include "psram.h"
 #include "emulator.h"
 #include "console.h"
+#include "terminal.h"
 
 const char *const imageFilename = "0:Image";
 
@@ -39,12 +40,12 @@ int main()
 	{
 		tud_task();
 		console_task();
+		terminal_task();
 	}
 }
 
 void core1_entry()
 {
-
 	int r = initPSRAM();
 	if (r)
 		console_panic("Error initalizing PSRAM!\n");
@@ -60,6 +61,9 @@ void core1_entry()
 	if (FR_OK != fr)
 		console_panic("Error loading image: %s (%d)\n", FRESULT_str(fr), fr);
 	console_printf("Image loaded sucessfuly!\n");
+	
+	sleep_ms(100);
+	initLCDTerm();
 
 	rvEmulator();
 
