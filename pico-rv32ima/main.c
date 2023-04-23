@@ -24,10 +24,12 @@ int main()
 	sleep_ms(25);
 
 	tusb_init();
-
+	
 	uart_init(UART_INSTANCE, UART_BAUD_RATE);
 	gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
 	gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
+
+	initLCDTerm();
 
 	queue_init(&screen_queue, sizeof(char), IO_QUEUE_LEN);
 	queue_init(&kb_queue, sizeof(char), IO_QUEUE_LEN);
@@ -61,9 +63,6 @@ void core1_entry()
 	if (FR_OK != fr)
 		console_panic("Error loading image: %s (%d)\n", FRESULT_str(fr), fr);
 	console_printf("Image loaded sucessfuly!\n");
-	
-	sleep_ms(100);
-	initLCDTerm();
 
 	rvEmulator();
 

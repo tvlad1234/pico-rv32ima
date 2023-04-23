@@ -7,6 +7,8 @@
 #include "tusb.h"
 
 #include "console.h"
+#include "terminal.h"
+
 #include "rv32_config.h"
 
 queue_t screen_queue, kb_queue;
@@ -72,9 +74,12 @@ void console_puts(char s[])
     uint8_t n = strlen(s);
     for (int i = 0; i < n; i++)
     {
-        queue_add_blocking(&screen_queue, &s[i]);
-        if (s[i] == '\n')
-            queue_add_blocking(&screen_queue, &cr);
+        queue_try_add(&screen_queue, &s[i]);
+        queue_add_blocking(&term_screen_queue, &s[i]);
+        if (s[i] == '\n'){
+            queue_try_add(&screen_queue, &cr);
+            queue_add_blocking(&term_screen_queue, &cr);
+        }
     }
 }
 
