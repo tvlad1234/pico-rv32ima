@@ -1,3 +1,6 @@
 [submodule "no-OS-FatFS-SD-SPI-RPi-Pico"]
 	path = no-OS-FatFS-SD-SPI-RPi-Pico
 	url = https://github.com/tvlad1234/no-OS-FatFS-SD-SPI-RPi-Pico.git
+[submodule "pico-displayDrivs"]
+	path = pico-displayDrivs
+	url = https://github.com/tvlad1234/pico-displayDrivs.git
