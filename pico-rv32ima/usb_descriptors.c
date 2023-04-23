@@ -2,6 +2,7 @@
  * The MIT License (MIT)
  *
  * Copyright (c) 2019 Ha Thach (tinyusb.org)
+ * Copyright (c) 2023 Vlad Tomoiaga (tvlad1234)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,6 +23,10 @@
  * THE SOFTWARE.
  *
  */
+
+#include "rv32_config.h"
+
+#if CONSOLE_CDC
 
 #include "tusb.h"
 
@@ -269,3 +274,5 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
 
   return _desc_str;
 }
+
+#endif

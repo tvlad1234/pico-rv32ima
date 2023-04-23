@@ -1,3 +1,6 @@
+#include "rv32_config.h"
+#if CONSOLE_LCD
+
 #include "pico/stdlib.h"
 #include <stdlib.h>
 
@@ -5,7 +8,6 @@
 #include <string.h>
 
 #include "console.h"
-#include "rv32_config.h"
 
 #include "st7735.h"
 #include "gfx.h"
@@ -242,3 +244,5 @@ void terminal_task(void)
         prevMillis = millis;
     }
 }
+
+#endif
