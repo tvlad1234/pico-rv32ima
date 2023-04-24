@@ -20,7 +20,7 @@
 // Enable USB CDC console
 #define CONSOLE_CDC 1
 
-// Enable ST7735 LCD Console
+// Enable ST7735 LCD and PS/2 keyboard terminal
 #define CONSOLE_LCD 1
 
 #if CONSOLE_UART
@@ -104,6 +104,13 @@
 #define LCD_PIN_RST 5
 #define LCD_PIN_SCK 14
 #define LCD_PIN_TX 15
+
+/*******************/
+/* PS/2 keyboard interface
+/******************/
+
+#define PS2_PIN_DATA 2
+#define PS2_PIN_CK 3
 
 #endif
 

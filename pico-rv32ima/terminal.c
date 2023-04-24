@@ -12,7 +12,9 @@
 #include "st7735.h"
 #include "gfx.h"
 
-#define ESC 27
+#include "ps2.h"
+
+#define ESC 0x1B
 #define CSI '['
 
 queue_t term_screen_queue;
@@ -35,6 +37,8 @@ void initLCDTerm(void)
     LCD_initDisplay(INITR_BLACKTAB);
     LCD_setRotation(1);
     GFX_createFramebuf();
+
+    PS2_init(PS2_PIN_DATA, PS2_PIN_CK);
 
     queue_init(&term_screen_queue, sizeof(char), IO_QUEUE_LEN);
 
@@ -233,10 +237,56 @@ static uint64_t GetTimeMiliseconds()
     return to_ms_since_boot(t);
 }
 
+#define TERM_KEY_UP 'A'
+#define TERM_KEY_DOWN 'B'
+#define TERM_KEY_RIGHT 'C'
+#define TERM_KEY_LEFT 'D'
+
+const char csiStr[] = {ESC, CSI};
+
+void termSendArrow(char a)
+{
+    queue_try_add(&kb_queue, csiStr);
+    queue_try_add(&kb_queue, csiStr + 1);
+    queue_try_add(&kb_queue, &a);
+}
+
+void handlePs2Keyboard(void)
+{
+    while (PS2_keyAvailable())
+    {
+        char c = PS2_readKey();
+
+        switch (c)
+        {
+        case PS2_UPARROW:
+            termSendArrow(TERM_KEY_UP);
+            break;
+
+        case PS2_DOWNARROW:
+            termSendArrow(TERM_KEY_DOWN);
+            break;
+
+        case PS2_LEFTARROW:
+            termSendArrow(TERM_KEY_LEFT);
+            break;
+
+        case PS2_RIGHTARROW:
+            termSendArrow(TERM_KEY_RIGHT);
+            break;
+
+        default:
+            queue_try_add(&kb_queue, &c);
+            break;
+        }
+    }
+}
+
 void terminal_task(void)
 {
     static uint prevMillis = 0;
     vt100Emu();
+    handlePs2Keyboard();
     uint millis = GetTimeMiliseconds();
     if (millis > prevMillis + 150)
     {

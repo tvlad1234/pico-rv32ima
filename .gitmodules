@@ -4,3 +4,6 @@
 [submodule "pico-displayDrivs"]
 	path = pico-displayDrivs
 	url = https://github.com/tvlad1234/pico-displayDrivs.git
+[submodule "pico-ps2Driv"]
+	path = pico-ps2Driv
+	url = https://github.com/tvlad1234/pico-ps2Driv.git

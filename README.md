@@ -29,10 +29,25 @@ The configuration can be modified in the [rv32_config.h](pico-rv32ima/rv32_confi
     - CS1: GPIO21
     - CS2: GPIO22
 
-- The text console is presented to the user over USB-CDC, UART or a ST7735 LCD display. All of these options can be used at the same time, but keep in mind they point to the same virtual console. Each one of them can be enabled or disabled as desired in the config file.
+- The system console is accessible over USB-CDC, UART or an 128x160 ST7735 display paired with a PS2 keyboard. All three can be used at the same time, but keep in mind they point to the same virtual console. They can be enabled or disabled as desired in the config file. By default, the USB and LCD consoles are enabled.
+    - The presence of the LCD and keyboard is not mandatory, even if they're enabled. They're configured with the following default pinout:
+        - LCD:
+            - SCK: GPIO14
+            - MOSI: GPIO15
+            - DC: GPIO4
+            - RST: GPIO5
+            - CS: GPIO 6
+        - Keyboard:
+            - PS2 DAT: GPIO 3
+            - PS2 CK: GPIO 2
 
 The SD card needs to be formatted as FAT32 or exFAT. Block sizes from 1024 to 4096 bytes are confirmed to be working. A prebuilt Linux kernel and filesystem image is provided in [this file](linux/Image). It must be placed in the root of the SD card. If you want to build the image yourself, you need to run `make` in the [linux](linux) folder. This will clone the buildroot source tree, apply the necessary config files and build the kernel and system image.
 
 ## What it does
 On powerup, the Linux image will be copied into RAM. After a few seconds, Linux kernel messages will start streaming on the console. The boot process takes about one and a half minute.
-![Console boot log](screenshot.jpg)
+
+## Pictures
+- Serial (USB or UART) console:
+    - ![Console boot log](pictures/screenshot.jpg)
+- LCD console:
+    - ![LCD console](pictures/lcd.jpg)

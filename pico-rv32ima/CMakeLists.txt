@@ -20,6 +20,7 @@ target_link_libraries(pico-rv32ima
 	tinyusb_board
 	st7735
 	gfx
+	ps2
 )
 
 target_include_directories(pico-rv32ima PUBLIC ${CMAKE_CURRENT_LIST_DIR}/tusb_inc )
