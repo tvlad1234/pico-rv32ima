@@ -3,14 +3,13 @@
 #include "pico/util/queue.h"
 #include "hardware/vreg.h"
 
-#include "tusb.h"
-
 #include "ff.h"
 #include "hw_config.h"
 
 #include "psram.h"
 #include "emulator.h"
-#include "cdc_console.h"
+#include "console.h"
+#include "terminal.h"
 
 const char *const imageFilename = "0:Image";
 
@@ -22,10 +21,7 @@ int main()
 	set_sys_clock_khz(400000, true);	// overclock to 400 MHz (from 125MHz)
 	sleep_ms(25);
 
-	tusb_init();
-
-	queue_init(&screen_queue, sizeof(char), IO_QUEUE_LEN);
-	queue_init(&kb_queue, sizeof(char), IO_QUEUE_LEN);
+	console_init();
 
 	multicore_reset_core1();
 	multicore_fifo_drain();
@@ -33,29 +29,27 @@ int main()
 
 	while (true)
 	{
-		tud_task();
-		cdc_task();
+		console_task();
 	}
 }
 
 void core1_entry()
 {
-
 	int r = initPSRAM();
 	if (r)
-		cdc_panic("Error initalizing PSRAM!\n");
+		console_panic("Error initalizing PSRAM!\n\r");
 
-	cdc_printf("PSRAM init OK!\n");
+	console_printf("PSRAM init OK!\n\r");
 
 	sd_card_t *pSD0 = sd_get_by_num(0);
 	FRESULT fr = f_mount(&pSD0->fatfs, pSD0->pcName, 1);
 	if (FR_OK != fr)
-		cdc_panic("SD mount error: %s (%d)\n", FRESULT_str(fr), fr);
+		console_panic("SD mount error: %s (%d)\n\r", FRESULT_str(fr), fr);
 
 	fr = loadFileIntoRAM(imageFilename, 0);
 	if (FR_OK != fr)
-		cdc_panic("Error loading image: %s (%d)\n", FRESULT_str(fr), fr);
-	cdc_printf("Image loaded sucessfuly!\n");
+		console_panic("Error loading image: %s (%d)\n", FRESULT_str(fr), fr);
+	console_printf("Image loaded sucessfuly!\n\r");
 
 	rvEmulator();
 

@@ -14,6 +14,33 @@
 // Tie microsecond clock to instruction count
 #define EMULATOR_FIXED_UPDATE false
 
+// Enable UART console
+#define CONSOLE_UART 0
+
+// Enable USB CDC console
+#define CONSOLE_CDC 1
+
+// Enable ST7735 LCD and PS/2 keyboard terminal
+#define CONSOLE_LCD 1
+
+#if CONSOLE_UART
+
+/******************/
+/* UART config
+/******************/
+
+// UART instance
+#define UART_INSTANCE uart0
+
+// UART Baudrate (if enabled)
+#define UART_BAUD_RATE 115200
+
+// Pins for the UART (if enabled)
+#define UART_TX_PIN 0
+#define UART_RX_PIN 1
+
+#endif
+
 /******************/
 /* PSRAM config
 /******************/
@@ -59,6 +86,31 @@
 #define SD_SPI_PIN_MOSI 19
 #define SD_SPI_PIN_CLK 18
 #define SD_SPI_PIN_CS 20
+
+#endif
+
+#if CONSOLE_LCD
+
+/*******************/
+/* LCD SPI interface
+/******************/
+
+// SPI instance used for the LCD (if used)
+#define LCD_SPI_INSTANCE spi1
+
+// Pins for the LCD SPI interface (if used)
+#define LCD_PIN_DC 4
+#define LCD_PIN_CS 6
+#define LCD_PIN_RST 5
+#define LCD_PIN_SCK 14
+#define LCD_PIN_TX 15
+
+/*******************/
+/* PS/2 keyboard interface
+/******************/
+
+#define PS2_PIN_DATA 2
+#define PS2_PIN_CK 3
 
 #endif
 

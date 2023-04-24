@@ -4,8 +4,11 @@
 #include "pico/stdlib.h"
 #include "pico/util/queue.h"
 
-#include "cdc_console.h"
+#include "console.h"
+#include "terminal.h"
+
 #include "psram.h"
+#include "cache.h"
 #include "emulator.h"
 
 #include "default64mbdtc.h"
@@ -31,7 +34,7 @@ static int ReadKBByte();
 static uint64_t GetTimeMicroseconds();
 static void MiniSleep();
 
-#define MINIRV32WARN(x...) cdc_printf(x);
+#define MINIRV32WARN(x...) console_printf(x);
 #define MINIRV32_DECORATE static
 #define MINI_RV32_RAM_SIZE ram_amt
 #define MINIRV32_IMPLEMENTATION
@@ -61,39 +64,39 @@ static void MiniSleep();
 // SD Memory Bus
 #define MINIRV32_CUSTOM_MEMORY_BUS
 
-void MINIRV32_STORE4(uint32_t ofs, uint32_t val)
+static void MINIRV32_STORE4(uint32_t ofs, uint32_t val)
 {
-    accessPSRAM(ofs, 4, true, &val);
+    cache_write(ofs, &val, 4);
 }
 
-void MINIRV32_STORE2(uint32_t ofs, uint16_t val)
+static void MINIRV32_STORE2(uint32_t ofs, uint16_t val)
 {
-    accessPSRAM(ofs, 2, true, &val);
+    cache_write(ofs, &val, 2);
 }
 
-void MINIRV32_STORE1(uint32_t ofs, uint8_t val)
+static void MINIRV32_STORE1(uint32_t ofs, uint8_t val)
 {
-    accessPSRAM(ofs, 1, true, &val);
+    cache_write(ofs, &val, 1);
 }
 
-uint32_t MINIRV32_LOAD4(uint32_t ofs)
+static uint32_t MINIRV32_LOAD4(uint32_t ofs)
 {
     uint32_t val;
-    accessPSRAM(ofs, 4, false, &val);
+    cache_read(ofs, &val, 4);
     return val;
 }
 
-uint16_t MINIRV32_LOAD2(uint32_t ofs)
+static uint16_t MINIRV32_LOAD2(uint32_t ofs)
 {
     uint16_t val;
-    accessPSRAM(ofs, 2, false, &val);
+    cache_read(ofs, &val, 2);
     return val;
 }
 
-uint8_t MINIRV32_LOAD1(uint32_t ofs)
+static uint8_t MINIRV32_LOAD1(uint32_t ofs)
 {
     uint8_t val;
-    accessPSRAM(ofs, 1, false, &val);
+    cache_read(ofs, &val, 1);
     return val;
 }
 
@@ -150,10 +153,10 @@ void rvEmulator()
         case 0x7777:
             return; // syscon code for restart
         case 0x5555:
-            cdc_printf("POWEROFF@0x%08x%08x\n", core.cycleh, core.cyclel);
+            console_printf("POWEROFF@0x%08x%08x\n", core.cycleh, core.cyclel);
             return; // syscon code for power-off
         default:
-            cdc_printf("Unknown failure\n");
+            console_printf("Unknown failure\n");
             break;
         }
     }
@@ -197,10 +200,7 @@ static uint32_t HandleException(uint32_t ir, uint32_t code)
 static void HandleOtherCSRWrite(uint8_t *image, uint16_t csrno, uint32_t value)
 {
     if (csrno == 0x139)
-    {
-        char c = value;
-        queue_add_blocking(&screen_queue, &c);
-    }
+        console_putc(value);
 }
 
 static uint32_t HandleOtherCSRRead(uint8_t *image, uint16_t csrno)
@@ -221,10 +221,7 @@ static uint32_t HandleOtherCSRRead(uint8_t *image, uint16_t csrno)
 static uint32_t HandleControlStore(uint32_t addy, uint32_t val)
 {
     if (addy == 0x10000000) // UART 8250 / 16550 Data Buffer
-    {
-        char c = val;
-        queue_add_blocking(&screen_queue, &c);
-    }
+        console_putc(val);
 
     return 0;
 }
