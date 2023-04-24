@@ -5,6 +5,8 @@
 #include "pico/util/queue.h"
 
 #include "console.h"
+#include "terminal.h"
+
 #include "psram.h"
 #include "emulator.h"
 
@@ -197,10 +199,7 @@ static uint32_t HandleException(uint32_t ir, uint32_t code)
 static void HandleOtherCSRWrite(uint8_t *image, uint16_t csrno, uint32_t value)
 {
     if (csrno == 0x139)
-    {
-        char c = value;
-        queue_add_blocking(&screen_queue, &c);
-    }
+        console_putc(value);
 }
 
 static uint32_t HandleOtherCSRRead(uint8_t *image, uint16_t csrno)
@@ -221,10 +220,7 @@ static uint32_t HandleOtherCSRRead(uint8_t *image, uint16_t csrno)
 static uint32_t HandleControlStore(uint32_t addy, uint32_t val)
 {
     if (addy == 0x10000000) // UART 8250 / 16550 Data Buffer
-    {
-        char c = val;
-        queue_add_blocking(&screen_queue, &c);
-    }
+        console_putc(val);
 
     return 0;
 }

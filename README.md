@@ -13,26 +13,26 @@ This project uses [CNLohr's mini-rv32ima](https://github.com/cnlohr/mini-rv32ima
 _This project overvolts and overclocks the RP2040! Use at own risk!_
 
 ## How to use
-By default, the hardware is configured as follows:
-- The SD card is connected via SPI, with the following pinout:
+The configuration can be modified in the [rv32_config.h](pico-rv32ima/rv32_config.h) file.
+
+- By default, the SD card is connected via SPI, with the following pinout:
     - CLK: GPIO18
     - MISO: GPIO16
     - MOSI: GPIO19
     - CS: GPIO20
+- The SD card may also be connected over SDIO.
 
-- The two RAM chips are connected with the following pinout:
+- The two RAM chips are connected with the following default pinout:
     - CLK: GPIO10
     - MISO: GPIO12
     - MOSI: GPIO11
     - CS1: GPIO21
     - CS2: GPIO22
 
-- The text console can be accessed over USB CDC or UART. 
-
-The hardware and emulator configuration can be modified in the [rv32_config.h](pico-rv32ima/rv32_config.h) file. SDIO interface is also supported for the SD card.
+- The text console is presented to the user over USB-CDC, UART or a ST7735 LCD display. All of these options can be used at the same time, but keep in mind they point to the same virtual console. Each one of them can be enabled or disabled as desired in the config file.
 
 The SD card needs to be formatted as FAT32 or exFAT. Block sizes from 1024 to 4096 bytes are confirmed to be working. A prebuilt Linux kernel and filesystem image is provided in [this file](linux/Image). It must be placed in the root of the SD card. If you want to build the image yourself, you need to run `make` in the [linux](linux) folder. This will clone the buildroot source tree, apply the necessary config files and build the kernel and system image.
 
 ## What it does
-On powerup, the board will wait for either USB or UART console to become active. The USB console is activated by initiating the connection from a terminal; the UART is activated when data (for example, a keypress) is received. Then, the Linux image will be copied into RAM. After a few seconds, Linux kernel messages will start streaming on the console. The boot process takes about two and a half minutes.
+On powerup, the Linux image will be copied into RAM. After a few seconds, Linux kernel messages will start streaming on the console. The boot process takes about two and a half minutes.
 ![Console boot log](screenshot.jpg)

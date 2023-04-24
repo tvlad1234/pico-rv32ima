@@ -5,6 +5,7 @@ add_executable(pico-rv32ima
 	emulator.c
 	usb_descriptors.c
     console.c
+	terminal.c
 )
 
 # Add the standard library and FatFS/SPI to the build
@@ -16,6 +17,8 @@ target_link_libraries(pico-rv32ima
 	hardware_vreg
 	tinyusb_device 
 	tinyusb_board
+	st7735
+	gfx
 )
 
 target_include_directories(pico-rv32ima PUBLIC ${CMAKE_CURRENT_LIST_DIR}/tusb_inc )
