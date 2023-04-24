@@ -8,6 +8,7 @@
 #include "terminal.h"
 
 #include "psram.h"
+#include "cache.h"
 #include "emulator.h"
 
 #include "default64mbdtc.h"
@@ -63,39 +64,39 @@ static void MiniSleep();
 // SD Memory Bus
 #define MINIRV32_CUSTOM_MEMORY_BUS
 
-void MINIRV32_STORE4(uint32_t ofs, uint32_t val)
+static void MINIRV32_STORE4(uint32_t ofs, uint32_t val)
 {
-    accessPSRAM(ofs, 4, true, &val);
+    cache_write(ofs, &val, 4);
 }
 
-void MINIRV32_STORE2(uint32_t ofs, uint16_t val)
+static void MINIRV32_STORE2(uint32_t ofs, uint16_t val)
 {
-    accessPSRAM(ofs, 2, true, &val);
+    cache_write(ofs, &val, 2);
 }
 
-void MINIRV32_STORE1(uint32_t ofs, uint8_t val)
+static void MINIRV32_STORE1(uint32_t ofs, uint8_t val)
 {
-    accessPSRAM(ofs, 1, true, &val);
+    cache_write(ofs, &val, 1);
 }
 
-uint32_t MINIRV32_LOAD4(uint32_t ofs)
+static uint32_t MINIRV32_LOAD4(uint32_t ofs)
 {
     uint32_t val;
-    accessPSRAM(ofs, 4, false, &val);
+    cache_read(ofs, &val, 4);
     return val;
 }
 
-uint16_t MINIRV32_LOAD2(uint32_t ofs)
+static uint16_t MINIRV32_LOAD2(uint32_t ofs)
 {
     uint16_t val;
-    accessPSRAM(ofs, 2, false, &val);
+    cache_read(ofs, &val, 2);
     return val;
 }
 
-uint8_t MINIRV32_LOAD1(uint32_t ofs)
+static uint8_t MINIRV32_LOAD1(uint32_t ofs)
 {
     uint8_t val;
-    accessPSRAM(ofs, 1, false, &val);
+    cache_read(ofs, &val, 1);
     return val;
 }
 
