@@ -82,7 +82,16 @@ void termPrintChar(char c)
     else if (c == '\r')
         termCR();
     else if (c == '\b')
-        termCursX--;
+    {
+        if (termCursX == 0)
+        {
+            termCursX = termWidth - 1;
+            if (termCursY > 0)
+                termCursY--;
+        }
+        else
+            termCursX--;
+    }
     else
     {
         GFX_drawChar(termCursX * fontWidth, termCursY * fontHeight, c, termFgColor, termBgColor, 1, 1);
@@ -129,11 +138,11 @@ void runCSI(char csi, uint *param, uint paramCount)
         else if (paramCount == 0)
         {
             uint fillPosX = termCursX * fontWidth;
-            uint fillPosY = termCursY * fontHeight - 1;
+            uint fillPosY = termCursY * fontHeight;
             GFX_fillRect(fillPosX, fillPosY, GFX_getWidth() - fillPosX, fontHeight, ST77XX_BLACK);
             if (termCursY < termHeight)
             {
-                fillPosY = (termCursY + 1) * fontHeight - 1;
+                fillPosY = (termCursY + 1) * fontHeight;
                 GFX_fillRect(0, fillPosY, GFX_getWidth(), GFX_getHeight() - fillPosY, ST77XX_BLACK);
             }
         }
@@ -282,15 +291,32 @@ void handlePs2Keyboard(void)
     }
 }
 
+void drawCursor(uint x, uint y, bool en)
+{
+    if (en)
+        GFX_drawLine(x * fontWidth, y * fontHeight + fontHeight, (x + 1) * fontWidth, y * fontHeight + fontHeight, ST77XX_WHITE);
+    else
+        GFX_drawLine(x * fontWidth, y * fontHeight + fontHeight, (x + 1) * fontWidth, y * fontHeight + fontHeight, ST77XX_BLACK);
+}
+
 void terminal_task(void)
 {
     static uint prevMillis = 0;
+    static uint px, py;
+    static bool en = false;
     vt100Emu();
     handlePs2Keyboard();
     uint millis = GetTimeMiliseconds();
     if (millis > prevMillis + 150)
     {
+        if ((termCursX != px || termCursY != py) && !en)
+            drawCursor(px, py, false);
+        drawCursor(termCursX, termCursY, en);
+        en = !en;
+
         GFX_Update();
+        px = termCursX;
+        py = termCursY;
         prevMillis = millis;
     }
 }
