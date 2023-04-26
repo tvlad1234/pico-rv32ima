@@ -11,6 +11,9 @@
 #include "cache.h"
 #include "emulator.h"
 
+#include "f_util.h"
+#include "ff.h"
+
 #include "default64mbdtc.h"
 
 #include "rv32_config.h"
@@ -33,6 +36,9 @@ static int ReadKBByte();
 
 static uint64_t GetTimeMicroseconds();
 static void MiniSleep();
+
+FRESULT loadFileIntoRAM(const char *imageFilename, uint32_t addr);
+void loadDataIntoRAM(const unsigned char *d, uint32_t addr, uint32_t size);
 
 #define MINIRV32WARN(x...) console_printf(x);
 #define MINIRV32_DECORATE static
@@ -105,11 +111,17 @@ static uint8_t MINIRV32_LOAD1(uint32_t ofs)
 static void DumpState(struct MiniRV32IMAState *core);
 struct MiniRV32IMAState core;
 
-void rvEmulator()
+int rvEmulator()
 {
 
     uint32_t dtb_ptr = ram_amt - sizeof(default64mbdtb);
     const uint32_t *dtb = default64mbdtb;
+
+    FRESULT fr = loadFileIntoRAM(IMAGE_FILENAME, 0);
+	if (FR_OK != fr)
+		console_panic("Error loading image: %s (%d)\n", FRESULT_str(fr), fr);
+	console_printf("Image loaded sucessfuly!\n\r");
+
 
     uint32_t validram = dtb_ptr;
     loadDataIntoRAM(default64mbdtb, dtb_ptr, sizeof(default64mbdtb));
@@ -151,12 +163,14 @@ void rvEmulator()
             instct = 0;
             break;
         case 0x7777:
-            return; // syscon code for restart
+            console_printf("\nREBOOT@0x%08x%08x\n", core.cycleh, core.cyclel);
+            return EMU_REBOOT; // syscon code for reboot
         case 0x5555:
-            console_printf("POWEROFF@0x%08x%08x\n", core.cycleh, core.cyclel);
-            return; // syscon code for power-off
+            console_printf("\nPOWEROFF@0x%08x%08x\n", core.cycleh, core.cyclel);
+            return EMU_POWEROFF; // syscon code for power-off
         default:
-            console_printf("Unknown failure\n");
+            console_printf("\nUnknown failure\n");
+            return EMU_UNKNOWN;
             break;
         }
     }
@@ -247,4 +261,44 @@ static uint64_t GetTimeMicroseconds()
 static void MiniSleep()
 {
     sleep_ms(1);
+}
+
+// Memory and file loading
+
+FRESULT loadFileIntoRAM(const char *imageFilename, uint32_t addr)
+{
+    FIL imageFile;
+    FRESULT fr = f_open(&imageFile, imageFilename, FA_READ);
+    if (FR_OK != fr && FR_EXIST != fr)
+        return fr;
+
+    FSIZE_t imageSize = f_size(&imageFile);
+
+    uint8_t buf[4096];
+    while (imageSize >= 4096)
+    {
+        fr = f_read(&imageFile, buf, 4096, NULL);
+        if (FR_OK != fr)
+            return fr;
+        accessPSRAM(addr, 4096, true, buf);
+        addr += 4096;
+        imageSize -= 4096;
+    }
+
+    if (imageSize)
+    {
+        fr = f_read(&imageFile, buf, imageSize, NULL);
+        if (FR_OK != fr)
+            return fr;
+        accessPSRAM(addr, imageSize, true, buf);
+    }
+
+    fr = f_close(&imageFile);
+    return fr;
+}
+
+void loadDataIntoRAM(const unsigned char *d, uint32_t addr, uint32_t size)
+{
+    while (size--)
+        accessPSRAM(addr++, 1, true, d++);
 }

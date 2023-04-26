@@ -8,6 +8,9 @@
 // RAM size in megabytes
 #define EMULATOR_RAM_MB 16
 
+// Image filename
+#define IMAGE_FILENAME "0:Image"
+
 // Time divisor
 #define EMULATOR_TIME_DIV 6
 

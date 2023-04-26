@@ -1,8 +1,5 @@
 #include <stdlib.h>
 
-#include "f_util.h"
-#include "ff.h"
-
 #include "rv32_config.h"
 #include "psram.h"
 
@@ -156,42 +153,4 @@ void accessPSRAM(uint32_t addr, size_t size, bool write, void *bufP)
         spi_rx_array(b, size);
 
     deSelectPsramChip(ramchip);
-}
-
-FRESULT loadFileIntoRAM(const char *imageFilename, uint32_t addr)
-{
-    FIL imageFile;
-    FRESULT fr = f_open(&imageFile, imageFilename, FA_READ);
-    if (FR_OK != fr && FR_EXIST != fr)
-        return fr;
-
-    FSIZE_t imageSize = f_size(&imageFile);
-
-    uint8_t buf[4096];
-    while (imageSize >= 4096)
-    {
-        fr = f_read(&imageFile, buf, 4096, NULL);
-        if (FR_OK != fr)
-            return fr;
-        accessPSRAM(addr, 4096, true, buf);
-        addr += 4096;
-        imageSize -= 4096;
-    }
-
-    if (imageSize)
-    {
-        fr = f_read(&imageFile, buf, imageSize, NULL);
-        if (FR_OK != fr)
-            return fr;
-        accessPSRAM(addr, imageSize, true, buf);
-    }
-
-    fr = f_close(&imageFile);
-    return fr;
-}
-
-void loadDataIntoRAM(const unsigned char *d, uint32_t addr, uint32_t size)
-{
-    while (size--)
-        accessPSRAM(addr++, 1, true, d++);
 }
