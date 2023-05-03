@@ -148,6 +148,18 @@ void runCSI(char csi, uint *param, uint paramCount)
         }
     }
 
+    // Clear in line
+    else if (csi == 'K')
+    {
+        // Clear from cursor to end of line
+        if (paramCount == 0)
+        {
+            uint fillPosX = termCursX * fontWidth;
+            uint fillPosY = termCursY * fontHeight;
+            GFX_fillRect(fillPosX, fillPosY, GFX_getWidth() - fillPosX, fontHeight, ST77XX_BLACK);
+        }
+    }
+
     // Cursor movement
     else if (csi == 'H')
     {
