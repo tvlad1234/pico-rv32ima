@@ -44,7 +44,7 @@ The configuration can be modified in the [rv32_config.h](pico-rv32ima/rv32_confi
 The SD card needs to be formatted as FAT32 or exFAT. Block sizes from 1024 to 4096 bytes are confirmed to be working. A prebuilt Linux kernel and filesystem image is provided in [this file](linux/Image). It must be placed in the root of the SD card. If you want to build the image yourself, you need to run `make` in the [linux](linux) folder. This will clone the buildroot source tree, apply the necessary config files and build the kernel and system image.
 
 ## What it does
-On powerup, the Linux image will be copied into RAM. After a few seconds, Linux kernel messages will start streaming on the console. The boot process takes about one and a half minute.
+On powerup, the Linux image will be copied into RAM. After a few seconds, Linux kernel messages will start streaming on the console. The boot process takes about one and a half minute. A video of the boot process can be seen [here](https://youtu.be/txgoWddk_2I).
 
 ## Pictures
 - Serial (USB or UART) console:
