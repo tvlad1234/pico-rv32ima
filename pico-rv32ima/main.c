@@ -11,15 +11,15 @@
 #include "console.h"
 #include "terminal.h"
 
-const char *const imageFilename = "0:Image";
-
 void core1_entry();
 
 int main()
 {
+	sleep_ms(50);
 	vreg_set_voltage(VREG_VOLTAGE_MAX); // overvolt the core just a bit
+	sleep_ms(50);
 	set_sys_clock_khz(400000, true);	// overclock to 400 MHz (from 125MHz)
-	sleep_ms(25);
+	sleep_ms(50);
 
 	console_init();
 
@@ -46,13 +46,8 @@ void core1_entry()
 	if (FR_OK != fr)
 		console_panic("SD mount error: %s (%d)\n\r", FRESULT_str(fr), fr);
 
-	fr = loadFileIntoRAM(imageFilename, 0);
-	if (FR_OK != fr)
-		console_panic("Error loading image: %s (%d)\n", FRESULT_str(fr), fr);
-	console_printf("Image loaded sucessfuly!\n\r");
+	int c = rvEmulator();
 
-	rvEmulator();
-
-	while (true)
-		tight_loop_contents();
+	while (c == EMU_REBOOT)
+		c = rvEmulator();
 }

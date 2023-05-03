@@ -13,7 +13,7 @@ This project uses [CNLohr's mini-rv32ima](https://github.com/cnlohr/mini-rv32ima
 _This project overvolts and overclocks the RP2040! Use at own risk!_
 
 ## How to use
-The configuration can be modified in the [rv32_config.h](pico-rv32ima/rv32_config.h) file.
+The configuration can be modified in the [rv32_config.h](pico-rv32ima/rv32_config.h) file. A schematic with the pin mappings described here is included in [this file](hardware/pico_linux.kicad_sch).
 
 - By default, the SD card is connected via SPI, with the following pinout:
     - CLK: GPIO18
@@ -44,7 +44,7 @@ The configuration can be modified in the [rv32_config.h](pico-rv32ima/rv32_confi
 The SD card needs to be formatted as FAT32 or exFAT. Block sizes from 1024 to 4096 bytes are confirmed to be working. A prebuilt Linux kernel and filesystem image is provided in [this file](linux/Image). It must be placed in the root of the SD card. If you want to build the image yourself, you need to run `make` in the [linux](linux) folder. This will clone the buildroot source tree, apply the necessary config files and build the kernel and system image.
 
 ## What it does
-On powerup, the Linux image will be copied into RAM. After a few seconds, Linux kernel messages will start streaming on the console. The boot process takes about one and a half minute.
+On powerup, the Linux image will be copied into RAM. After a few seconds, Linux kernel messages will start streaming on the console. The boot process takes about one and a half minute. A video of the boot process can be seen [here](https://youtu.be/txgoWddk_2I).
 
 ## Pictures
 - Serial (USB or UART) console:

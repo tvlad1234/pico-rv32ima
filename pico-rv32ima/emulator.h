@@ -3,7 +3,12 @@
 
 #include <stdint.h>
 
-extern uint32_t ram_amt;
-void rvEmulator();
+enum emulatorCode{
+    EMU_POWEROFF,
+    EMU_REBOOT,
+    EMU_UNKNOWN
+};
+
+int rvEmulator();
 
 #endif
