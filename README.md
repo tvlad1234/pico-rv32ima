@@ -13,7 +13,7 @@ This project uses [CNLohr's mini-rv32ima](https://github.com/cnlohr/mini-rv32ima
 _This project overvolts and overclocks the RP2040! Use at own risk!_
 
 ## How to use
-The configuration can be modified in the [rv32_config.h](pico-rv32ima/rv32_config.h) file.
+The configuration can be modified in the [rv32_config.h](pico-rv32ima/rv32_config.h) file. A schematic with the pin mappings described here is included in [this file](hardware/pico_linux.kicad_sch).
 
 - By default, the SD card is connected via SPI, with the following pinout:
     - CLK: GPIO18
