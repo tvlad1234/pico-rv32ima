@@ -44,7 +44,7 @@ The configuration can be modified in the [rv32_config.h](pico-rv32ima/rv32_confi
 The SD card needs to be formatted as FAT32 or exFAT. Block sizes from 1024 to 4096 bytes are confirmed to be working. A prebuilt Linux kernel and filesystem image is provided in [this file](linux/Image). It must be placed in the root of the SD card. If you want to build the image yourself, you need to run `make` in the [linux](linux) folder. This will clone the buildroot source tree, apply the necessary config files and build the kernel and system image.
 
 ## What it does
-On powerup, the Linux image will be copied into RAM. After a few seconds, Linux kernel messages will start streaming on the console. The boot process takes about one and a half minute. A video of the boot process can be seen [here](https://youtu.be/txgoWddk_2I).
+On powerup, the Linux image will be copied into RAM. After a few seconds, Linux kernel messages will start streaming on the console. The boot process takes about one and a half minute. A video of the boot process can be seen [here](https://youtu.be/txgoWddk_2I). The Linux image includes a fork of the [c4 compiler/interpreter](https://github.com/rswier/c4). To run the included hello world example, type `c4 hello.c` in the shell after the system has booted. The source file of c4 can be found in `/usr/src/c4.c`. I have included it in the system image because this compiler is self-hosting and can run itself, which makes for a nice demo. You can use the vi editor to create or edit source files.
 
 ## Pictures
 - Serial (USB or UART) console:

@@ -29,6 +29,7 @@ null::sysinit:/bin/ln -sf /proc/self/fd/2 /dev/stderr
 ::sysinit:/etc/init.d/rcS
 
 # Put a getty on the serial port
+console::sysinit:stty rows 15 cols 24
 console::sysinit:clear
 console::sysinit:echo "Welcome to pico-rv32ima Linux"
 console::respawn:/bin/login -f root
