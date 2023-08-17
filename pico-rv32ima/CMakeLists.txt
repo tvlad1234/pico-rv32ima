@@ -16,6 +16,8 @@ target_link_libraries(pico-rv32ima
 	pico_time
 	pico_multicore
 	hardware_vreg
+	hardware_spi
+	hardware_clocks
 	tinyusb_device 
 	tinyusb_board
 	st7735

@@ -118,10 +118,9 @@ int rvEmulator()
     const uint32_t *dtb = default64mbdtb;
 
     FRESULT fr = loadFileIntoRAM(IMAGE_FILENAME, 0);
-	if (FR_OK != fr)
-		console_panic("Error loading image: %s (%d)\n", FRESULT_str(fr), fr);
-	console_printf("Image loaded sucessfuly!\n\r");
-
+    if (FR_OK != fr)
+        console_panic("Error loading image: %s (%d)\n", FRESULT_str(fr), fr);
+    console_printf("\rImage loaded sucessfuly!\n\n\r");
 
     uint32_t validram = dtb_ptr;
     loadDataIntoRAM(default64mbdtb, dtb_ptr, sizeof(default64mbdtb));
@@ -181,7 +180,7 @@ int rvEmulator()
 //////////////////////////////////////////////////////////////////////////
 
 // Keyboard
-static int IsKBHit()
+static inline int IsKBHit()
 {
     if (queue_is_empty(&kb_queue))
         return 0;
@@ -189,7 +188,7 @@ static int IsKBHit()
         return 1;
 }
 
-static int ReadKBByte()
+static inline int ReadKBByte()
 {
     char c;
     if (queue_try_remove(&kb_queue, &c))
@@ -211,13 +210,13 @@ static uint32_t HandleException(uint32_t ir, uint32_t code)
 
 // CSR handling (Linux HVC console)
 
-static void HandleOtherCSRWrite(uint8_t *image, uint16_t csrno, uint32_t value)
+static inline void HandleOtherCSRWrite(uint8_t *image, uint16_t csrno, uint32_t value)
 {
     if (csrno == 0x139)
         console_putc(value);
 }
 
-static uint32_t HandleOtherCSRRead(uint8_t *image, uint16_t csrno)
+static inline uint32_t HandleOtherCSRRead(uint8_t *image, uint16_t csrno)
 {
     if (csrno == 0x140)
     {
@@ -252,7 +251,7 @@ static uint32_t HandleControlLoad(uint32_t addy)
 }
 
 // Timing
-static uint64_t GetTimeMicroseconds()
+static inline uint64_t GetTimeMicroseconds()
 {
     absolute_time_t t = get_absolute_time();
     return to_us_since_boot(t);

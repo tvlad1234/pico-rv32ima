@@ -100,7 +100,7 @@ void console_task(void)
 void console_putc(char c)
 {
 #if CONSOLE_CDC || CONSOLE_UART
-    queue_try_add(&ser_screen_queue, &c);
+    queue_add_blocking(&ser_screen_queue, &c);
 #endif
 
 #if CONSOLE_LCD

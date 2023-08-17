@@ -23,8 +23,8 @@
 // Enable USB CDC console
 #define CONSOLE_CDC 1
 
-// Enable ST7735 LCD and PS/2 keyboard terminal
-#define CONSOLE_LCD 1
+// Enable ST7735 LCD and PS/2 keyboard terminal (Cannot be used when PSRAM is using hardware SPI)
+#define CONSOLE_LCD 0
 
 #if CONSOLE_UART
 
@@ -48,6 +48,15 @@
 /* PSRAM config
 /******************/
 
+// Use hardware SPI for PSRSAM (bitbang otherwise)
+#define PSRAM_HARDWARE_SPI 1
+
+#if PSRAM_HARDWARE_SPI
+
+// Hardware SPI instance to use for PSRAM
+#define PSRAM_SPI_INST spi1
+
+#endif
 // Pins for the PSRAM SPI interface
 #define PSRAM_SPI_PIN_CK 10
 #define PSRAM_SPI_PIN_TX 11
@@ -56,6 +65,12 @@
 // Select lines for the two PSRAM chips
 #define PSRAM_SPI_PIN_S1 21
 #define PSRAM_SPI_PIN_S2 22
+
+// PSRAM chip size (in kilobytes)
+#define PSRAM_CHIP_SIZE (8192 * 1024)
+
+// Use two PSRAM chips?
+#define PSRAM_TWO_CHIPS 1
 
 /****************/
 /* SD card config
@@ -90,6 +105,11 @@
 #define SD_SPI_PIN_CLK 18
 #define SD_SPI_PIN_CS 20
 
+#endif
+
+#if PSRAM_HARDWARE_SPI
+#undef CONSOLE_LCD
+#define CONSOLE_LCD 0
 #endif
 
 #if CONSOLE_LCD

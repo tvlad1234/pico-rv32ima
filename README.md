@@ -9,6 +9,7 @@ This project uses [CNLohr's mini-rv32ima](https://github.com/cnlohr/mini-rv32ima
 - a Raspberry Pi Pico (or other RP2040 board)
 - an SD card
 - two 8 megabyte (64Mbit) SPI PSRAM chips (I used LY68L6400).
+    - it is possible to use only one of these chips when running a reduced system image, by changing a setting in the config file.
 
 _This project overvolts and overclocks the RP2040! Use at own risk!_
 
@@ -29,17 +30,10 @@ The configuration can be modified in the [rv32_config.h](pico-rv32ima/rv32_confi
     - CS1: GPIO21
     - CS2: GPIO22
 
-- The system console is accessible over USB-CDC, UART or an 128x160 ST7735 display paired with a PS2 keyboard. All three can be used at the same time, but keep in mind they point to the same virtual console. They can be enabled or disabled as desired in the config file. By default, the USB and LCD consoles are enabled.
-    - The presence of the LCD and keyboard is not mandatory, even if they're enabled. They're configured with the following default pinout:
-        - LCD:
-            - SCK: GPIO14
-            - MOSI: GPIO15
-            - DC: GPIO4
-            - RST: GPIO5
-            - CS: GPIO 6
-        - Keyboard:
-            - PS2 DAT: GPIO 3
-            - PS2 CK: GPIO 2
+- The RAM chips use hardware SPI by default. A flag in the config file allows them to use software bit-banged SPI (required for using the LCD console).
+
+- The system console is accessible over USB-CDC, UART or an 128x160 ST7735 display paired with a PS2 keyboard. All three can be used at the same time, but keep in mind they point to the same virtual console. They can be enabled or disabled as desired in the config file. By default, only the USB console is enabled.
+    - The use of the LCD console requires disabling the hardware SPI interface for the RAN in the config file.
 
 The SD card needs to be formatted as FAT32 or exFAT. Block sizes from 1024 to 4096 bytes are confirmed to be working. A prebuilt Linux kernel and filesystem image is provided in [this file](linux/Image). It must be placed in the root of the SD card. If you want to build the image yourself, you need to run `make` in the [linux](linux) folder. This will clone the buildroot source tree, apply the necessary config files and build the kernel and system image.
 

@@ -13,7 +13,7 @@ static spi_t spis[] = {
      .set_drive_strength = true,
      .mosi_gpio_drive_strength = GPIO_DRIVE_STRENGTH_2MA,
      .sck_gpio_drive_strength = GPIO_DRIVE_STRENGTH_2MA,
-     .baud_rate = 25 * 1000 * 1000, // Actual frequency: 20833333.
+     .baud_rate = 50 * 1000 * 1000, // Actual frequency: 20833333.
      .DMA_IRQ_num = DMA_IRQ_1}};
 #endif
 
