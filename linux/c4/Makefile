@@ -3,7 +3,6 @@ all : deploy
 PREFIX:=../buildroot/output/host/bin/riscv32-buildroot-linux-uclibc-
 CC:=$(PREFIX)gcc
 
-# Note:  regymm says to do -fPIE -pie -static, instead of -fPIC
 CFLAGS:=-mabi=ilp32 -fPIE -pie -static -march=rv32ima -Os -s -g
 LDFLAGS:=-Wl,-elf2flt=-r
 
@@ -21,7 +20,6 @@ deploy : c4
 	mkdir -p ../buildroot/output/target/usr/src/
 	cp $(C_S) ../buildroot/output/target/usr/src/
 	cp c4src/hello.c ../buildroot/output/target/root/
-	make -C ../buildroot
 
 clean :
 	rm -rf c4 c4.gdb
