@@ -3,7 +3,7 @@ RISC-V emulator for RP2040, capable of running Linux.\
 Based on [mini-rv32ima by CNLohr](https://github.com/cnlohr/mini-rv32ima).
 
 ## How it works
-This project uses [CNLohr's mini-rv32ima](https://github.com/cnlohr/mini-rv32ima) RISC-V emulator core to run Linux on a Raspberry Pi Pico. It uses SPI PSRAM chips as system memory. To alleviate the bottleneck introduced by the SPI interface of the PSRAM, a 128 kilobyte cache is used.
+This project uses [CNLohr's mini-rv32ima](https://github.com/cnlohr/mini-rv32ima) RISC-V emulator core to run Linux on a Raspberry Pi Pico. It uses SPI PSRAM chips as system memory. To alleviate the bottleneck introduced by the SPI interface of the PSRAM, a 128 kilobyte cache is used. The Linux kernel is loaded from an SD card. The SD card also provides the storage for the Linux system.
 ## Requirements 
 - a Raspberry Pi Pico (or other RP2040 board)
 - an SD card
@@ -32,7 +32,7 @@ The configuration can be modified in the [rv32_config.h](pico-rv32ima/rv32_confi
 The SD card needs to be formatted as FAT16 or FAT32. Block sizes from 1024 to 4096 bytes are confirmed to be working. Prebuilt Linux kernel and filesystem images are provided in [the `linux` folder](linux/). They must be placed in the root of the SD card. If you want to build the image yourself, you need to run `make` in the [`linux`](linux) folder. This will clone the buildroot source tree, apply the necessary config files and build the kernel and system image.
 
 ## What it does
-On powerup, board waits for the BOOTSEL button to be pressed. After it has been pressed, the Linux kernel will be copied into RAM. In a few seconds, kernel messages will start streaming on the console. The boot process takes around 30 seconds. The Linux image includes a fork of the [c4 compiler/interpreter](https://github.com/rswier/c4), the duktape JavaScript interpreter and the Lua interpreter, as well as a variety of Linux utilities and the coremark benchmark.
+On powerup, the board waits for the BOOTSEL button to be pressed. After it has been pressed, the Linux kernel will be copied into RAM. In a few seconds, kernel messages will start streaming on the console. The boot process takes around 30 seconds. The Linux image includes a fork of the [c4 compiler/interpreter](https://github.com/rswier/c4), the duktape JavaScript interpreter and the Lua interpreter, as well as a variety of Linux utilities and the coremark benchmark.
 
 ## Pictures
 - Serial (USB or UART) console:
