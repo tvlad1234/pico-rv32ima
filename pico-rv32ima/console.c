@@ -5,7 +5,6 @@
 #include <stdarg.h>
 
 #include "console.h"
-#include "terminal.h"
 
 #include "rv32_config.h"
 
@@ -29,10 +28,6 @@ void console_init(void)
     uart_init(UART_INSTANCE, UART_BAUD_RATE);
     gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
     gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
-#endif
-
-#if CONSOLE_LCD
-    initLCDTerm();
 #endif
 
 #if CONSOLE_CDC || CONSOLE_UART
@@ -91,21 +86,11 @@ void console_task(void)
 #if CONSOLE_CDC || CONSOLE_UART
     ser_console_task();
 #endif
-
-#if CONSOLE_LCD
-    terminal_task();
-#endif
 }
 
 void console_putc(char c)
 {
-#if CONSOLE_CDC || CONSOLE_UART
     queue_add_blocking(&ser_screen_queue, &c);
-#endif
-
-#if CONSOLE_LCD
-    queue_add_blocking(&term_screen_queue, &c);
-#endif
 }
 
 void console_puts(char s[])
