@@ -30,6 +30,13 @@ FATFS fatfs;
 
 int main()
 {
+
+    sleep_ms(50);
+    vreg_set_voltage(VREG_VOLTAGE_MAX); // overvolt the core just a bit
+    sleep_ms(50);
+    gset_sys_clock_khz(400000, true); // overclock to 400 MHz (from 125MHz)
+    sleep_ms(50);
+
     console_init();
 
     multicore_reset_core1();
@@ -50,17 +57,10 @@ void core1_entry()
         console_panic("Error initalizing PSRAM!\n\r");
     console_printf("PSRAM init OK!\n\r");
 
-    
-	FRESULT rc = pf_mount( &fatfs );
+    FRESULT rc = pf_mount(&fatfs);
     if (rc)
         console_panic("Error initalizing SD!\n\r");
     console_printf("SD init OK!\n\r");
-
-    sleep_ms(50);
-    vreg_set_voltage(VREG_VOLTAGE_MAX); // overvolt the core just a bit
-    sleep_ms(50);
-    gset_sys_clock_khz(400000, true); // overclock to 400 MHz (from 125MHz)
-    sleep_ms(50);
 
 #if PSRAM_HARDWARE_SPI
     int baud = spi_set_baudrate(PSRAM_SPI_INST, 1000 * 1000 * 50);
@@ -71,10 +71,9 @@ void core1_entry()
     while (true)
     {
         int c = riscv_emu();
-        if(c != EMU_REBOOT)
+        if (c != EMU_REBOOT)
             wait_button();
     }
-        
 }
 
 void gset_sys_clock_pll(uint32_t vco_freq, uint post_div1, uint post_div2)
