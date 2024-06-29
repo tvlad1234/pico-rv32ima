@@ -1,8 +1,11 @@
+add_subdirectory(vga)
+
 add_executable(pico-rv32ima
     main.c
 	psram.c
 	cache.c
 	console.c
+	terminal.c
 	emulator.c
 	get_serial.c
 	usb_descriptors.c
@@ -21,6 +24,7 @@ target_link_libraries(pico-rv32ima
 	hardware_clocks
 	tinyusb_device 
 	tinyusb_board
+	vga
 )
 
 target_include_directories(pico-rv32ima PUBLIC ${CMAKE_CURRENT_LIST_DIR}/tusb_inc )

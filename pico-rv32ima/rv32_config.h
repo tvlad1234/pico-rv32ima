@@ -23,6 +23,8 @@
 // Enable USB CDC console
 #define CONSOLE_CDC 1
 
+// Enable VGA console
+#define CONSOLE_VGA 1
 
 #if CONSOLE_UART
 
@@ -39,6 +41,19 @@
 // Pins for the UART (if enabled)
 #define UART_TX_PIN 0
 #define UART_RX_PIN 1
+
+#endif
+
+#if CONSOLE_VGA
+
+/******************/
+/* VGA config
+/******************/
+
+// Pins for the VGA output (if enabled)
+#define VGA_VSYNC_PIN 17
+#define VGA_HSYNC_PIN 16
+#define VGA_R_PIN 18
 
 #endif
 

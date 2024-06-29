@@ -8,6 +8,10 @@
 
 #include "rv32_config.h"
 
+#if CONSOLE_VGA
+#include "terminal.h"
+#endif
+
 #if CONSOLE_CDC
 #include "tusb.h"
 #endif
@@ -20,6 +24,11 @@ uint8_t cdc_buf[IO_QUEUE_LEN];
 
 void console_init(void)
 {
+
+#if CONSOLE_VGA
+    terminal_init();
+#endif
+
 #if CONSOLE_CDC
     tusb_init();
 #endif
@@ -86,11 +95,19 @@ void console_task(void)
 #if CONSOLE_CDC || CONSOLE_UART
     ser_console_task();
 #endif
+
+#if CONSOLE_VGA
+    terminal_task();
+#endif
 }
 
 void console_putc(char c)
 {
     queue_add_blocking(&ser_screen_queue, &c);
+
+#if CONSOLE_VGA
+   queue_add_blocking(&term_screen_queue, &c);
+#endif
 }
 
 void console_puts(char s[])
