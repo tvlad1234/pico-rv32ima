@@ -1,5 +1,6 @@
 add_subdirectory(petitfatfs)
 add_subdirectory(vga)
+add_subdirectory(ps2)
 
 add_executable(pico-rv32ima
     main.c
@@ -25,6 +26,7 @@ target_link_libraries(pico-rv32ima
 	tinyusb_board
 	petitfatfs
 	vga
+	ps2
 
 )
 

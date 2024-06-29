@@ -9,8 +9,7 @@
 
 #include "console.h"
 #include "vga.h"
-
-// #include "ps2.h"
+#include "ps2.h"
 
 #define ESC 0x1B
 #define CSI '['
@@ -26,7 +25,7 @@ queue_t term_screen_queue;
 
 void terminal_init(void)
 {
-    // PS2_init(PS2_PIN_DATA, PS2_PIN_CK);
+    PS2_init(PS2_PIN_DATA, PS2_PIN_CK);
     VGA_initDisplay(VGA_VSYNC_PIN, VGA_HSYNC_PIN, VGA_R_PIN);
     queue_init(&term_screen_queue, sizeof(char), IO_QUEUE_LEN);
 }
@@ -199,7 +198,6 @@ void termSendArrow(char a)
 
 void handlePs2Keyboard(void)
 {
-    /*
     while (PS2_keyAvailable())
     {
         char c = PS2_readKey();
@@ -224,10 +222,10 @@ void handlePs2Keyboard(void)
 
         default:
             queue_try_add(&kb_queue, &c);
+            // VGA_putc(c);
             break;
         }
     }
-    */
 }
 
 void drawCursor(uint x, uint y, bool en)

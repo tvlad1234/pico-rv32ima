@@ -55,6 +55,9 @@
 #define VGA_HSYNC_PIN 16
 #define VGA_R_PIN 18
 
+#define PS2_PIN_DATA 14
+#define PS2_PIN_CK 15
+
 #endif
 
 /******************/
