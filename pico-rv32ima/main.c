@@ -63,8 +63,8 @@ void core1_entry()
     console_printf("SD init OK!\n\r");
 
 #if PSRAM_HARDWARE_SPI
-    int baud = spi_set_baudrate(PSRAM_SPI_INST, 1000 * 1000 * 50);
-    console_printf("PSRAM clock freq: %d Hz\n\r", baud);
+    int baud = spi_set_baudrate(PSRAM_SPI_INST, 1000 * 1000 * 45);
+    console_printf("PSRAM clock freq: %.2f MHz\n\r", baud / 1000000.0f);
     sleep_ms(50);
 #endif
 
