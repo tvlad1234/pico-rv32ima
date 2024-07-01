@@ -42,6 +42,7 @@ void console_init(void)
 #if CONSOLE_CDC || CONSOLE_UART
     queue_init(&ser_screen_queue, sizeof(char), IO_QUEUE_LEN);
 #endif
+
     queue_init(&kb_queue, sizeof(char), IO_QUEUE_LEN);
 }
 
@@ -103,7 +104,9 @@ void console_task(void)
 
 void console_putc(char c)
 {
+#if CONSOLE_CDC || CONSOLE_UART
     queue_add_blocking(&ser_screen_queue, &c);
+#endif
 
 #if CONSOLE_VGA
    queue_add_blocking(&term_screen_queue, &c);
