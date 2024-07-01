@@ -101,6 +101,12 @@ int psram_init()
     gpio_set_dir(PSRAM_SPI_PIN_S1, GPIO_OUT);
     psram_deselect_chip(PSRAM_SPI_PIN_S1);
 
+#if PSRAM_TWO_CHIPS
+    gpio_init(PSRAM_SPI_PIN_S2);
+    gpio_set_dir(PSRAM_SPI_PIN_S2, GPIO_OUT);
+    psram_deselect_chip(PSRAM_SPI_PIN_S2);
+#endif
+
 #if PSRAM_HARDWARE_SPI
     uint baud = spi_init(PSRAM_SPI_INST, 1000 * 1000 * 25);
     gpio_set_function(PSRAM_SPI_PIN_TX, GPIO_FUNC_SPI);
@@ -117,6 +123,10 @@ int psram_init()
     gpio_set_slew_rate(PSRAM_SPI_PIN_TX, GPIO_SLEW_RATE_FAST);
     gpio_set_slew_rate(PSRAM_SPI_PIN_RX, GPIO_SLEW_RATE_FAST);
     gpio_set_slew_rate(PSRAM_SPI_PIN_CK, GPIO_SLEW_RATE_FAST);
+
+#if PSRAM_TWO_CHIPS
+    gpio_set_slew_rate(PSRAM_SPI_PIN_S2, GPIO_SLEW_RATE_FAST);
+#endif
 
     sleep_ms(10);
 

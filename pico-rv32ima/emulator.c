@@ -12,7 +12,13 @@
 #include "rv32_config.h"
 #include "pff.h"
 
+#if EMULATOR_RAM_MB == 16
+#include "default16mbdtc.h"
+#define DTB_ARRAY default16mbdtb
+#elif EMULATOR_RAM_MB == 8
 #include "default8mbdtc.h"
+#define DTB_ARRAY default8mbdtb
+#endif
 
 int time_divisor = EMULATOR_TIME_DIV;
 int fixed_update = EMULATOR_FIXED_UPDATE;
@@ -169,7 +175,7 @@ int riscv_emu()
         console_printf("Opened block device image.\n\r");
 
     console_printf("Loading device tree\n\r");
-    psram_load_data(default8mbdtb, (EMULATOR_RAM_MB * 1024 * 1024) - sizeof(default8mbdtb), sizeof(default8mbdtb));
+    psram_load_data(DTB_ARRAY, (EMULATOR_RAM_MB * 1024 * 1024) - sizeof(DTB_ARRAY), sizeof(DTB_ARRAY));
     console_printf("Starting RISC-V VM\n\n\r");
 
     cache_reset();
