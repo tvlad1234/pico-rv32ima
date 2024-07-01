@@ -283,9 +283,12 @@ void PS2_init(int d, int c)
 {
 	ps2DataPin = d;
 	ps2ClkPin = c;
-
 	gpio_init(ps2DataPin);
+	gpio_init(ps2ClkPin);
 	gpio_set_dir(ps2DataPin, GPIO_IN);
+	gpio_set_dir(ps2ClkPin, GPIO_IN);
+	gpio_set_pulls(ps2ClkPin, false, true);
+	gpio_set_pulls(ps2DataPin, false, true);
 
 	gpio_set_irq_enabled_with_callback(ps2ClkPin, GPIO_IRQ_EDGE_FALL, true, &ps2_gpio_callback);
 }
