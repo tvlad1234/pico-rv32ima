@@ -27,6 +27,8 @@ void terminal_init(void)
 {
     PS2_init(PS2_PIN_DATA, PS2_PIN_CK);
     VGA_initDisplay(VGA_VSYNC_PIN, VGA_HSYNC_PIN, VGA_R_PIN);
+    VGA_puts("\n\rpico-rv32ima, compiled ");
+    VGA_puts(__DATE__);
     queue_init(&term_screen_queue, sizeof(char), IO_QUEUE_LEN);
 }
 
@@ -200,7 +202,7 @@ void handlePs2Keyboard(void)
 {
     while (PS2_keyAvailable())
     {
-        char c = PS2_readKey();
+        uint16_t c = PS2_readKey();
 
         switch (c)
         {
@@ -221,6 +223,11 @@ void handlePs2Keyboard(void)
             break;
 
         default:
+            if (c & 0x100)
+            {
+                c &= 0xFF;
+                c -= 'a' - 1;
+            }
             queue_try_add(&kb_queue, &c);
             // VGA_putc(c);
             break;

@@ -10,15 +10,18 @@
 #define SHIFT_L 0x04
 #define SHIFT_R 0x08
 #define ALTGR 0x10
+#define CTRL_L 0x20
 
 int ps2DataPin;
 int ps2ClkPin;
 
 volatile uint8_t buffer[BUFFER_SIZE];
 volatile uint8_t head = 0, tail = 0;
-uint8_t CharBuffer = 0;
+uint16_t CharBuffer = 0;
 uint8_t UTF8next = 0;
 PS2Keymap_t *keymap = &PS2Keymap_US;
+
+uint8_t ctrl_pressed = 0;
 
 const PS2Keymap_t PS2Keymap_US = {
 	// without shift
@@ -148,6 +151,10 @@ char get_iso8859_code(void)
 				{
 					state &= ~SHIFT_R;
 				}
+				else if (s == 0x14)
+				{
+					state &= ~CTRL_L;
+				}
 				else if (s == 0x11 && (state & MODIFIER))
 				{
 					state &= ~ALTGR;
@@ -165,6 +172,11 @@ char get_iso8859_code(void)
 			else if (s == 0x59)
 			{
 				state |= SHIFT_R;
+				continue;
+			}
+			else if (s == 0x14)
+			{
+				state |= CTRL_L;
 				continue;
 			}
 			else if (s == 0x11 && (state & MODIFIER))
@@ -231,6 +243,11 @@ char get_iso8859_code(void)
 				if (s < PS2_KEYMAP_SIZE)
 					c = keymap->noshift[s]; // pgm_read_byte(keymap->noshift + s);
 			}
+
+			if (state & CTRL_L)
+				ctrl_pressed = 1;
+			else
+				ctrl_pressed = 0;
 			state &= ~(BREAK | MODIFIER);
 			if (c)
 				return c;
@@ -248,9 +265,9 @@ uint8_t PS2_keyAvailable(void)
 	return 0;
 }
 
-int PS2_readKey()
+uint16_t PS2_readKey()
 {
-	uint8_t result;
+	uint16_t result;
 
 	result = UTF8next;
 	if (result)
@@ -263,16 +280,24 @@ int PS2_readKey()
 		if (result)
 		{
 			CharBuffer = 0;
+			if (ctrl_pressed)
+				result |= 0x100;
+			ctrl_pressed = 0;
 		}
 		else
 		{
 			result = get_iso8859_code();
+			if (ctrl_pressed)
+				result |= 0x100;
+			ctrl_pressed = 0;
 		}
+		/*
 		if (result >= 128)
 		{
 			UTF8next = (result & 0x3F) | 0x80;
 			result = ((result >> 6) & 0x1F) | 0xC0;
 		}
+		*/
 	}
 	if (!result)
 		return -1;

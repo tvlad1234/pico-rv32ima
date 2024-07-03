@@ -145,6 +145,6 @@ void PS2_init(int d, int c);
 void PS2_selectKeyMap(PS2Keymap_t *km);
 
 uint8_t PS2_keyAvailable(void);
-int PS2_readKey();
+uint16_t PS2_readKey();
 
 #endif
