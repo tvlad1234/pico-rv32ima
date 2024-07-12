@@ -5,9 +5,12 @@
 #include <stdarg.h>
 
 #include "console.h"
-#include "terminal.h"
 
 #include "rv32_config.h"
+
+#if CONSOLE_VGA
+#include "terminal.h"
+#endif
 
 #if CONSOLE_CDC
 #include "tusb.h"
@@ -21,6 +24,11 @@ uint8_t cdc_buf[IO_QUEUE_LEN];
 
 void console_init(void)
 {
+
+#if CONSOLE_VGA
+    terminal_init();
+#endif
+
 #if CONSOLE_CDC
     tusb_init();
 #endif
@@ -31,13 +39,10 @@ void console_init(void)
     gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
 #endif
 
-#if CONSOLE_LCD
-    initLCDTerm();
-#endif
-
 #if CONSOLE_CDC || CONSOLE_UART
     queue_init(&ser_screen_queue, sizeof(char), IO_QUEUE_LEN);
 #endif
+
     queue_init(&kb_queue, sizeof(char), IO_QUEUE_LEN);
 }
 
@@ -92,7 +97,7 @@ void console_task(void)
     ser_console_task();
 #endif
 
-#if CONSOLE_LCD
+#if CONSOLE_VGA
     terminal_task();
 #endif
 }
@@ -103,8 +108,8 @@ void console_putc(char c)
     queue_add_blocking(&ser_screen_queue, &c);
 #endif
 
-#if CONSOLE_LCD
-    queue_add_blocking(&term_screen_queue, &c);
+#if CONSOLE_VGA
+   queue_add_blocking(&term_screen_queue, &c);
 #endif
 }
 

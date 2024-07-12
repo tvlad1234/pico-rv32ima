@@ -2,19 +2,80 @@
 #include "pico/multicore.h"
 #include "pico/util/queue.h"
 
+#include "hardware/gpio.h"
+#include "hardware/sync.h"
+#include "hardware/structs/ioqspi.h"
+#include "hardware/structs/sio.h"
+
+#include "hardware/spi.h"
 #include "hardware/pll.h"
 #include "hardware/vreg.h"
 #include "hardware/clocks.h"
 
-#include "ff.h"
-#include "hw_config.h"
+#include "rv32_config.h"
 
 #include "psram.h"
 #include "emulator.h"
 #include "console.h"
-#include "terminal.h"
+
+#include "pff.h"
 
 void core1_entry();
+bool gset_sys_clock_khz(uint32_t freq_khz, bool required);
+void gset_sys_clock_pll(uint32_t vco_freq, uint post_div1, uint post_div2);
+bool my_get_bootsel_button();
+void wait_button();
+
+FATFS fatfs;
+
+int main()
+{
+
+    sleep_ms(50);
+    vreg_set_voltage(VREG_VOLTAGE_MAX); // overvolt the core just a bit
+    sleep_ms(50);
+    gset_sys_clock_khz(RP2040_CPU_FREQ, true); // overclock to 400 MHz (from 125MHz)
+    sleep_ms(50);
+
+    console_init();
+
+    multicore_reset_core1();
+    multicore_fifo_drain();
+    multicore_launch_core1(core1_entry);
+
+    while (true)
+        console_task();
+}
+
+void core1_entry()
+{
+    wait_button();
+    console_printf("\033[2J\033[1;1H"); // clear terminal
+
+    int r = psram_init();
+    if (r < 0)
+        console_panic("\rError initalizing PSRAM!\n\r");
+    console_printf("\rPSRAM init OK!\n\r");
+
+    FRESULT rc = pf_mount(&fatfs);
+    if (rc)
+        console_panic("\rError initalizing SD!\n\r");
+    console_printf("\rSD init OK!\n\r");
+
+#if PSRAM_HARDWARE_SPI
+    int baud = spi_set_baudrate(PSRAM_SPI_INST, 1000 * 1000 * 45);
+    console_printf("PSRAM clock freq: %.2f MHz\n\r", baud / 1000000.0f);
+    sleep_ms(50);
+#endif
+
+    while (true)
+    {
+        int c = riscv_emu();
+        if (c != EMU_REBOOT)
+            wait_button();
+        console_printf("\033[2J\033[1;1H"); // clear terminal
+    }
+}
 
 void gset_sys_clock_pll(uint32_t vco_freq, uint post_div1, uint post_div2)
 {
@@ -51,7 +112,7 @@ void gset_sys_clock_pll(uint32_t vco_freq, uint post_div1, uint post_div2)
     }
 }
 
-static inline bool gset_sys_clock_khz(uint32_t freq_khz, bool required)
+bool gset_sys_clock_khz(uint32_t freq_khz, bool required)
 {
     uint vco, postdiv1, postdiv2;
     if (check_sys_clock_khz(freq_khz, &vco, &postdiv1, &postdiv2))
@@ -66,43 +127,36 @@ static inline bool gset_sys_clock_khz(uint32_t freq_khz, bool required)
     return false;
 }
 
-int main()
+bool my_get_bootsel_button()
 {
+    const uint CS_PIN_INDEX = 1;
 
-    sleep_ms(50);
-    vreg_set_voltage(VREG_VOLTAGE_MAX); // overvolt the core just a bit
-    sleep_ms(50);
-    gset_sys_clock_khz(400000, true); // overclock to 400 MHz (from 125MHz)
-    sleep_ms(50);
-    console_init();
+    // Set chip select to Hi-Z
+    hw_write_masked(&ioqspi_hw->io[CS_PIN_INDEX].ctrl,
+                    GPIO_OVERRIDE_LOW << IO_QSPI_GPIO_QSPI_SS_CTRL_OEOVER_LSB,
+                    IO_QSPI_GPIO_QSPI_SS_CTRL_OEOVER_BITS);
 
-    multicore_reset_core1();
-    multicore_fifo_drain();
-    multicore_launch_core1(core1_entry);
+    // Note we can't call into any sleep functions in flash right now
+    for (volatile int i = 0; i < 1000; ++i)
+        ;
 
-    while (true)
-    {
-        console_task();
-    }
+    // The HI GPIO registers in SIO can observe and control the 6 QSPI pins.
+    // Note the button pulls the pin *low* when pressed.
+    bool button_state = !(sio_hw->gpio_hi_in & (1u << CS_PIN_INDEX));
+
+    // Need to restore the state of chip select, else we are going to have a
+    // bad time when we return to code in flash!
+    hw_write_masked(&ioqspi_hw->io[CS_PIN_INDEX].ctrl,
+                    GPIO_OVERRIDE_NORMAL << IO_QSPI_GPIO_QSPI_SS_CTRL_OEOVER_LSB,
+                    IO_QSPI_GPIO_QSPI_SS_CTRL_OEOVER_BITS);
+
+    return button_state;
 }
 
-void core1_entry()
+void wait_button()
 {
-    sleep_ms(2000);
-    int r = initPSRAM();
-    if (r < 1)
-        console_panic("Error initalizing PSRAM!\n\r");
-
-    console_printf("PSRAM init OK!\n\r");
-    console_printf("PSRAM Baud: %d\n\r", r);
-
-    sd_card_t *pSD0 = sd_get_by_num(0);
-    FRESULT fr = f_mount(&pSD0->fatfs, pSD0->pcName, 1);
-    if (FR_OK != fr)
-        console_panic("SD mount error: %s (%d)\n\r", FRESULT_str(fr), fr);
-
-    int c = rvEmulator();
-
-    while (c == EMU_REBOOT)
-        c = rvEmulator();
+    while (!my_get_bootsel_button())
+        tight_loop_contents();
+    while (my_get_bootsel_button())
+        tight_loop_contents();
 }

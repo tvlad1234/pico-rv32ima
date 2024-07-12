@@ -10,10 +10,6 @@ set(CMAKE_CXX_STANDARD 17)
 # Initialize the SDK
 pico_sdk_init()
 
-add_subdirectory(no-OS-FatFS-SD-SPI-RPi-Pico/src)
-add_subdirectory(pico-displayDrivs)
-add_subdirectory(pico-ps2Driv)
-
 add_subdirectory(pico-rv32ima)
 
 add_compile_options(-Wall

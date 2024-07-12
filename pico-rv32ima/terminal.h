@@ -6,6 +6,6 @@
 extern queue_t term_screen_queue;
 
 void terminal_task(void);
-void initLCDTerm(void);
+void terminal_init(void);
 
 #endif

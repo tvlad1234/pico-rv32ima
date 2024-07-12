@@ -1,170 +1,184 @@
-/*
- * Copyright (c) 2023, Jisheng Zhang <jszhang@kernel.org>. All rights reserved.
- *
- * Modified by Vlad Tomoiaga (tvlad1234)
- * SPDX-License-Identifier: BSD-3-Clause
- */
-
 #include <stdint.h>
 #include <string.h>
 
 #include "cache.h"
 #include "psram.h"
 
-#define psram_write(handle, ofs, p, sz) accessPSRAM(ofs, sz, true, p)
-#define psram_read(handle, ofs, p, sz) accessPSRAM(ofs, sz, false, p)
+#define psram_write(ofs, p, sz) psram_access(ofs, sz, true, p)
+#define psram_read(ofs, p, sz) psram_access(ofs, sz, false, p)
 
-struct cacheline
+#define ADDR_BITS 24
+#define OFFSET_BITS 4
+#define CACHE_LINE_SIZE 16
+#define INDEX_BITS 12
+
+#define OFFSET(addr) (addr & 0b1111)
+#define INDEX(addr) ((addr >> OFFSET_BITS) & 0b111111111111)
+#define TAG(addr) (addr >> 16)
+#define BASE(addr) (addr & (~(uint32_t)(0b1111)))
+
+#define LINE_TAG(line) (line->tag)
+
+#define IS_VALID(line) (line->status & 0b01)
+#define IS_DIRTY(line) (line->status & 0b10)
+#define IS_LRU(line) (line->status & 0b100)
+
+#define SET_VALID(line) line->status = 1
+#define SET_DIRTY(line) line->status |= 0b10;
+#define SET_LRU(line) line->status |= 0b100;
+#define CLEAR_LRU(line) line->status &= ~0b100;
+
+struct Cacheline
 {
-	uint8_t data[64];
+    uint8_t tag;
+    uint8_t data[CACHE_LINE_SIZE];
+    uint8_t status;
 };
+typedef struct Cacheline cacheline_t;
 
-static uint64_t accessed, hit;
-static uint32_t tags[4096 / 64 / 2][2];
-static struct cacheline cachelines[4096 / 64 / 2][2];
+cacheline_t cache[4096][2];
 
-/*
- * bit[0]: valid
- * bit[1]: dirty
- * bit[2]: for LRU
- * bit[3:10]: reserved
- * bit[11:31]: tag
- */
-#define VALID (1 << 0)
-#define DIRTY (1 << 1)
-#define LRU (1 << 2)
-#define LRU_SFT 2
-#define TAG_MSK 0xfffff800
+uint64_t hits, misses;
 
-/*
- * bit[0: 5]: offset
- * bit[6: 10]: index
- * bit[11: 31]: tag
- */
-static inline int get_index(uint32_t addr)
+
+void cache_reset()
 {
-	return (addr >> 6) & 0x1f;
+    hits = 0;
+    misses = 0;
+    memset(cache, 0, sizeof(cache));
 }
 
-void cache_write(uint32_t ofs, void *buf, uint32_t size)
+void cache_read(uint32_t addr, void *ptr, uint8_t size)
 {
-	// if (((ofs | (64 - 1)) != ((ofs + size - 1) | (64 - 1))))
-	//	printf("write cross boundary\n");
+    uint16_t index = INDEX(addr);
+    uint8_t tag = TAG(addr);
+    uint8_t offset = OFFSET(addr);
 
-	int ti, i, index = get_index(ofs);
-	uint32_t *tp;
-	uint8_t *p;
+    cacheline_t *line;
 
-	++accessed;
+    if (tag == LINE_TAG((&cache[index][0])) && IS_VALID((&cache[index][0])))
+    {
+        line = &(cache[index][0]);
+        CLEAR_LRU((&cache[index][0]));
+        SET_LRU((&cache[index][1]));
+        hits++;
+    }
+    else if (tag == LINE_TAG((&cache[index][1])) && IS_VALID((&cache[index][1])))
+    {
+        line = &(cache[index][1]);
+        CLEAR_LRU((&cache[index][1]));
+        SET_LRU((&cache[index][0]));
+        hits++;
+    }
 
-	for (i = 0; i < 2; i++)
-	{
-		tp = &tags[index][i];
-		p = cachelines[index][i].data;
-		if (*tp & VALID)
-		{
-			if ((*tp & TAG_MSK) == (ofs & TAG_MSK))
-			{
-				++hit;
-				ti = i;
-				break;
-			}
-			else
-			{
-				if (i != 1)
-					continue;
+    else // miss
+    {
+        misses++;
 
-				ti = 1 - ((*tp & LRU) >> LRU_SFT);
-				tp = &tags[index][ti];
-				p = cachelines[index][ti].data;
+        if (IS_LRU((&cache[index][0])))
+        {
+            line = &(cache[index][0]);
+            CLEAR_LRU((&cache[index][0]));
+            SET_LRU((&cache[index][1]));
+        }
 
-				if (*tp & DIRTY)
-				{
-					psram_write(handle, *tp & ~0x3f, p, 64);
-				}
-				psram_read(handle, ofs & ~0x3f, p, 64);
-				*tp = ofs & ~0x3f;
-				*tp |= VALID;
-			}
-		}
-		else
-		{
-			if (i != 1)
-				continue;
+        else
+        {
+            line = &(cache[index][1]);
+            CLEAR_LRU((&cache[index][1]));
+            SET_LRU((&cache[index][0]));
+        }
 
-			ti = i;
-			psram_read(handle, ofs & ~0x3f, p, 64);
-			*tp = ofs & ~0x3f;
-			*tp |= VALID;
-		}
-	}
+        if (IS_VALID(line) && IS_DIRTY(line)) // if line is valid and dirty, flush it to RAM
+        {
+            // flush line to RAM
+            uint32_t flush_base = (index << OFFSET_BITS) | ((uint32_t)(LINE_TAG(line)) << 16);
+            psram_write(flush_base, line->data, CACHE_LINE_SIZE);
+        }
 
-	tags[index][1] &= ~(LRU);
-	tags[index][1] |= (ti << LRU_SFT);
-	memcpy(p + (ofs & 0x3f), buf, size);
-	*tp |= DIRTY;
+        // get line from RAM
+        uint32_t base = BASE(addr);
+        psram_read(base, line->data, CACHE_LINE_SIZE);
+
+        line->tag = tag; // set the tag of the line
+        SET_VALID(line); // mark the line as valid
+    }
+
+    /*
+        if (offset + size > CACHE_LINE_SIZE)
+        {
+            // printf("cross boundary read!\n");
+            size = CACHE_LINE_SIZE - offset;
+        }
+    */
+
+    for (int i = 0; i < size; i++)
+        ((uint8_t *)(ptr))[i] = line->data[offset + i];
 }
 
-void cache_read(uint32_t ofs, void *buf, uint32_t size)
+void cache_write(uint32_t addr, void *ptr, uint8_t size)
 {
-	// if (((ofs | (64 - 1)) != ((ofs + size - 1) | (64 - 1))))
-	//	printf("read cross boundary\n");
+    uint16_t index = INDEX(addr);
+    uint8_t tag = TAG(addr);
+    uint8_t offset = OFFSET(addr);
 
-	int ti, i, index = get_index(ofs);
-	uint32_t *tp;
-	uint8_t *p;
+    cacheline_t *line;
 
-	++accessed;
+    if (tag == LINE_TAG((&cache[index][0])) && IS_VALID((&cache[index][0])))
+    {
+        line = &(cache[index][0]);
+        CLEAR_LRU((&cache[index][0]));
+        SET_LRU((&cache[index][1]));
+        hits++;
+    }
+    else if (tag == LINE_TAG((&cache[index][1])) && IS_VALID((&cache[index][1])))
+    {
+        line = &(cache[index][1]);
+        CLEAR_LRU((&cache[index][1]));
+        SET_LRU((&cache[index][0]));
+        hits++;
+    }
 
-	for (i = 0; i < 2; i++)
-	{
-		tp = &tags[index][i];
-		p = cachelines[index][i].data;
-		if (*tp & VALID)
-		{
-			if ((*tp & TAG_MSK) == (ofs & TAG_MSK))
-			{
-				++hit;
-				ti = i;
-				break;
-			}
-			else
-			{
-				if (i != 1)
-					continue;
+    else // miss
+    {
+        misses++;
 
-				ti = 1 - ((*tp & LRU) >> LRU_SFT);
-				tp = &tags[index][ti];
-				p = cachelines[index][ti].data;
+        if (IS_LRU((&cache[index][0])))
+        {
+            line = &(cache[index][0]);
+            CLEAR_LRU((&cache[index][0]));
+            SET_LRU((&cache[index][1]));
+        }
 
-				if (*tp & DIRTY)
-				{
-					psram_write(handle, *tp & ~0x3f, p, 64);
-				}
-				psram_read(handle, ofs & ~0x3f, p, 64);
-				*tp = ofs & ~0x3f;
-				*tp |= VALID;
-			}
-		}
-		else
-		{
-			if (i != 1)
-				continue;
+        else
+        {
+            line = &(cache[index][1]);
+            CLEAR_LRU((&cache[index][1]));
+            SET_LRU((&cache[index][0]));
+        }
 
-			ti = i;
-			psram_read(handle, ofs & ~0x3f, p, 64);
-			*tp = ofs & ~0x3f;
-			*tp |= VALID;
-		}
-	}
+        if (IS_VALID(line) && IS_DIRTY(line)) // if line is valid and dirty, flush it to RAM
+        {
+            // flush line to RAM
+            uint32_t flush_base = (index << OFFSET_BITS) | ((uint32_t)(LINE_TAG(line)) << 16);
+            psram_write(flush_base, line->data, CACHE_LINE_SIZE);
+        }
 
-	tags[index][1] &= ~(LRU);
-	tags[index][1] |= (ti << LRU_SFT);
-	memcpy(buf, p + (ofs & 0x3f), size);
-}
+        // get line from RAM
+        uint32_t base = BASE(addr);
+        psram_read(base, line->data, CACHE_LINE_SIZE);
 
-void cache_get_stat(uint64_t *phit, uint64_t *paccessed)
-{
-	*phit = hit;
-	*paccessed = accessed;
+        line->tag = tag; // set the tag of the line
+        SET_VALID(line); // mark the line as valid
+    }
+    /*
+        if (offset + size > CACHE_LINE_SIZE)
+        {
+            // printf("cross boundary write!\n");
+            size = CACHE_LINE_SIZE - offset;
+        }
+    */
+    for (int i = 0; i < size; i++)
+        line->data[offset + i] = ((uint8_t *)(ptr))[i];
+    SET_DIRTY(line); // mark the line as dirty
 }

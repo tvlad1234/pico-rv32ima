@@ -3,7 +3,7 @@
 
 #include "pico/util/queue.h"
 
-#define IO_QUEUE_LEN 15
+#define IO_QUEUE_LEN 64
 
 extern queue_t ser_screen_queue, kb_queue;
 
