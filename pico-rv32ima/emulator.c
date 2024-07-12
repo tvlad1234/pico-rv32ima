@@ -4,19 +4,21 @@
 #include "pico/stdlib.h"
 #include "pico/util/queue.h"
 
-#include "console.h"
-#include "terminal.h"
-
 #include "psram.h"
-#include "cache.h"
 #include "emulator.h"
-
-#include "f_util.h"
-#include "ff.h"
-
-#include "default64mbdtc.h"
+#include "console.h"
+#include "cache.h"
 
 #include "rv32_config.h"
+#include "pff.h"
+
+#if EMULATOR_RAM_MB == 16
+#include "default16mbdtc.h"
+#define DTB_ARRAY default16mbdtb
+#elif EMULATOR_RAM_MB == 8
+#include "default8mbdtc.h"
+#define DTB_ARRAY default8mbdtb
+#endif
 
 int time_divisor = EMULATOR_TIME_DIV;
 int fixed_update = EMULATOR_FIXED_UPDATE;
@@ -25,6 +27,12 @@ int single_step = 0;
 int fail_on_all_faults = 0;
 
 uint32_t ram_amt = EMULATOR_RAM_MB * 1024 * 1024;
+
+unsigned long blk_size = 67108864;
+unsigned long blk_transfer_size;
+unsigned long blk_offs;
+unsigned long blk_ram_ptr;
+FRESULT blk_err;
 
 static uint32_t HandleException(uint32_t ir, uint32_t retval);
 static uint32_t HandleControlStore(uint32_t addy, uint32_t val);
@@ -37,7 +45,6 @@ static int ReadKBByte();
 static uint64_t GetTimeMicroseconds();
 static void MiniSleep();
 
-FRESULT loadFileIntoRAM(const char *imageFilename, uint32_t addr);
 void loadDataIntoRAM(const unsigned char *d, uint32_t addr, uint32_t size);
 
 #define MINIRV32WARN(x...) console_printf(x);
@@ -50,7 +57,7 @@ void loadDataIntoRAM(const unsigned char *d, uint32_t addr, uint32_t size);
         {                                             \
             if (fail_on_all_faults)                   \
             {                                         \
-                cdc_printf("FAULT\n");                \
+                console_printf("FAULT\n");            \
                 return 3;                             \
             }                                         \
             else                                      \
@@ -67,7 +74,6 @@ void loadDataIntoRAM(const unsigned char *d, uint32_t addr, uint32_t size);
         rval = HandleOtherCSRRead(image, csrno); \
     }
 
-// SD Memory Bus
 #define MINIRV32_CUSTOM_MEMORY_BUS
 
 static void MINIRV32_STORE4(uint32_t ofs, uint32_t val)
@@ -106,28 +112,79 @@ static uint8_t MINIRV32_LOAD1(uint32_t ofs)
     return val;
 }
 
+static int8_t MINIRV32_LOAD1_SIGNED(uint32_t ofs)
+{
+    int8_t val;
+    cache_read(ofs, &val, 1);
+    return val;
+}
+
+static int16_t MINIRV32_LOAD2_SIGNED(uint32_t ofs)
+{
+    int16_t val;
+    cache_read(ofs, &val, 2);
+    return val;
+}
+
 #include "mini-rv32ima.h"
 
 static void DumpState(struct MiniRV32IMAState *core);
 struct MiniRV32IMAState core;
 
-int rvEmulator()
+uint32_t blk_buf[512 / 4];
+
+int riscv_emu()
 {
+    FRESULT rc = pf_open(KERNEL_FILENAME);
+    if (rc)
+        console_panic("Error opening kernel image!\n\r");
+    console_printf("Loading kernel image into RAM\n\r");
+    
+    UINT br;
+    uint32_t addr = 0;
+    uint32_t total_bytes = 0;
+    uint8_t cnt = 0;
+    const char spinner[] = "/-\\|";
 
-    uint32_t dtb_ptr = ram_amt - sizeof(default64mbdtb);
-    const uint32_t *dtb = default64mbdtb;
+    for (;;)
+    {
+        rc = pf_read(blk_buf, sizeof(blk_buf), &br); /* Read a chunk of file */
+        if (rc || !br)
+            break; /* Error or end of file */
 
-    FRESULT fr = loadFileIntoRAM(IMAGE_FILENAME, 0);
-	if (FR_OK != fr)
-		console_panic("Error loading image: %s (%d)\n", FRESULT_str(fr), fr);
-	console_printf("Image loaded sucessfuly!\n\r");
+        psram_access(addr, br, true, blk_buf);
+        total_bytes += br;
+        addr += br;
 
+        if (total_bytes % (16 * 1024) == 0)
+        {
+            cnt++;
+            console_printf("%d kb so far...  ", total_bytes / 1024);
+            console_putc(spinner[cnt % 4]);
+            console_putc('\r');
+        }
+    }
+    if (rc)
+        console_panic("Error loading kernel.");
+    console_printf("\n\rLoaded %d kilobytes.\n\r", total_bytes / 1024);
 
+    rc = pf_open(BLK_FILENAME);
+    if (rc)
+        console_printf("Error opening block device image!\n\r");
+    else
+        console_printf("Opened block device image.\n\r");
+
+    console_printf("Loading device tree\n\r");
+    psram_load_data(DTB_ARRAY, (EMULATOR_RAM_MB * 1024 * 1024) - sizeof(DTB_ARRAY), sizeof(DTB_ARRAY));
+    console_printf("Starting RISC-V VM\n\n\r");
+
+    cache_reset();
+
+    uint32_t dtb_ptr = ram_amt - 1536;
     uint32_t validram = dtb_ptr;
-    loadDataIntoRAM(default64mbdtb, dtb_ptr, sizeof(default64mbdtb));
 
-    uint32_t dtbRamValue = (validram >> 24) | (((validram >> 16) & 0xff) << 8) | (((validram >> 8) & 0xff) << 16) | ((validram & 0xff) << 24);
-    MINIRV32_STORE4(dtb_ptr + 0x13c, dtbRamValue);
+    //  uint32_t dtbRamValue = (validram >> 24) | (((validram >> 16) & 0xff) << 8) | (((validram >> 8) & 0xff) << 16) | ((validram & 0xff) << 24);
+    //  MINIRV32_STORE4(dtb_ptr + 0x13c, dtbRamValue);
 
     core.regs[10] = 0x00;                                                // hart ID
     core.regs[11] = dtb_ptr ? (dtb_ptr + MINIRV32_RAM_IMAGE_OFFSET) : 0; // dtb_pa (Must be valid pointer) (Should be pointer to dtb)
@@ -138,7 +195,8 @@ int rvEmulator()
 
     uint64_t rt;
     uint64_t lastTime = (fixed_update) ? 0 : (GetTimeMicroseconds() / time_divisor);
-    int instrs_per_flip = single_step ? 1 : 1024;
+
+    int instrs_per_flip = single_step ? 1 : 4096;
     for (rt = 0; rt < instct + 1 || instct < 0; rt += instrs_per_flip)
     {
         uint64_t *this_ccount = ((uint64_t *)&core.cyclel);
@@ -163,13 +221,13 @@ int rvEmulator()
             instct = 0;
             break;
         case 0x7777:
-            console_printf("\nREBOOT@0x%08x%08x\n", core.cycleh, core.cyclel);
+            console_printf("\nREBOOT@0x%08x%08x\n\r", core.cycleh, core.cyclel);
             return EMU_REBOOT; // syscon code for reboot
         case 0x5555:
-            console_printf("\nPOWEROFF@0x%08x%08x\n", core.cycleh, core.cyclel);
+            console_printf("\nPOWEROFF@0x%08x%08x\n\r", core.cycleh, core.cyclel);
             return EMU_POWEROFF; // syscon code for power-off
         default:
-            console_printf("\nUnknown failure\n");
+            console_printf("\nUnknown failure\n\r");
             return EMU_UNKNOWN;
             break;
         }
@@ -181,7 +239,7 @@ int rvEmulator()
 //////////////////////////////////////////////////////////////////////////
 
 // Keyboard
-static int IsKBHit()
+static inline int IsKBHit()
 {
     if (queue_is_empty(&kb_queue))
         return 0;
@@ -189,7 +247,7 @@ static int IsKBHit()
         return 1;
 }
 
-static int ReadKBByte()
+static inline int ReadKBByte()
 {
     char c;
     if (queue_try_remove(&kb_queue, &c))
@@ -209,15 +267,59 @@ static uint32_t HandleException(uint32_t ir, uint32_t code)
     return code;
 }
 
-// CSR handling (Linux HVC console)
-
-static void HandleOtherCSRWrite(uint8_t *image, uint16_t csrno, uint32_t value)
+// CSR handling (Linux HVC console and block device)
+static inline void HandleOtherCSRWrite(uint8_t *image, uint16_t csrno, uint32_t value)
 {
     if (csrno == 0x139)
         console_putc(value);
+    else if (csrno == 0x151)
+    {
+        blk_ram_ptr = value - MINIRV32_RAM_IMAGE_OFFSET;
+        // printf("\nblock op mem ptr %x\n", value);
+    }
+    else if (csrno == 0x152)
+    {
+        blk_offs = value;
+        blk_err = pf_lseek(blk_offs);
+        // printf("block op offset %x\n", value);
+    }
+    else if (csrno == 0x153)
+    {
+        blk_transfer_size = value;
+        // printf("\nblock op transfer size %d\n", value);
+    }
+    else if (csrno == 0x154)
+    {
+        uint nblocks = blk_transfer_size >> 9; // divide by 512
+        while (nblocks--)
+        {
+            if (value)
+            {
+                //  printf("block op write\n");
+                for (int i = 0; i < 512 / 4; i++)
+                {
+                    blk_buf[i] = MINIRV32_LOAD4(blk_ram_ptr);
+                    blk_ram_ptr += 4;
+                }
+                int x;
+                blk_err = pf_write(blk_buf, 512, &x);
+            }
+            else
+            {
+                int x;
+                blk_err = pf_read(blk_buf, 512, &x);
+                for (int i = 0; i < 512 / 4; i++)
+                {
+                    MINIRV32_STORE4(blk_ram_ptr, blk_buf[i]);
+                    blk_ram_ptr += 4;
+                }
+                // printf("block op read\n");
+            }
+        }
+    }
 }
 
-static uint32_t HandleOtherCSRRead(uint8_t *image, uint16_t csrno)
+static inline uint32_t HandleOtherCSRRead(uint8_t *image, uint16_t csrno)
 {
     if (csrno == 0x140)
     {
@@ -226,7 +328,14 @@ static uint32_t HandleOtherCSRRead(uint8_t *image, uint16_t csrno)
         else
             return -1;
     }
-
+    else if (csrno == 0x150)
+    {
+        return blk_size;
+    }
+    else if (csrno == 0x155)
+    {
+        return blk_err;
+    }
     return 0;
 }
 
@@ -252,7 +361,7 @@ static uint32_t HandleControlLoad(uint32_t addy)
 }
 
 // Timing
-static uint64_t GetTimeMicroseconds()
+static inline uint64_t GetTimeMicroseconds()
 {
     absolute_time_t t = get_absolute_time();
     return to_us_since_boot(t);
@@ -261,44 +370,4 @@ static uint64_t GetTimeMicroseconds()
 static void MiniSleep()
 {
     sleep_ms(1);
-}
-
-// Memory and file loading
-
-FRESULT loadFileIntoRAM(const char *imageFilename, uint32_t addr)
-{
-    FIL imageFile;
-    FRESULT fr = f_open(&imageFile, imageFilename, FA_READ);
-    if (FR_OK != fr && FR_EXIST != fr)
-        return fr;
-
-    FSIZE_t imageSize = f_size(&imageFile);
-
-    uint8_t buf[4096];
-    while (imageSize >= 4096)
-    {
-        fr = f_read(&imageFile, buf, 4096, NULL);
-        if (FR_OK != fr)
-            return fr;
-        accessPSRAM(addr, 4096, true, buf);
-        addr += 4096;
-        imageSize -= 4096;
-    }
-
-    if (imageSize)
-    {
-        fr = f_read(&imageFile, buf, imageSize, NULL);
-        if (FR_OK != fr)
-            return fr;
-        accessPSRAM(addr, imageSize, true, buf);
-    }
-
-    fr = f_close(&imageFile);
-    return fr;
-}
-
-void loadDataIntoRAM(const unsigned char *d, uint32_t addr, uint32_t size)
-{
-    while (size--)
-        accessPSRAM(addr++, 1, true, d++);
 }

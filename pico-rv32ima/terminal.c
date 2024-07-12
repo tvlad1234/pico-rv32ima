@@ -1,5 +1,5 @@
 #include "rv32_config.h"
-#if CONSOLE_LCD
+#if CONSOLE_VGA
 
 #include "pico/stdlib.h"
 #include <stdlib.h>
@@ -8,100 +8,28 @@
 #include <string.h>
 
 #include "console.h"
-
-#include "st7735.h"
-#include "gfx.h"
-
+#include "vga.h"
 #include "ps2.h"
 
 #define ESC 0x1B
 #define CSI '['
 
+#define TERM_KEY_UP 'A'
+#define TERM_KEY_DOWN 'B'
+#define TERM_KEY_RIGHT 'C'
+#define TERM_KEY_LEFT 'D'
+
+const uint8_t termColors[] = {BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE};
+
 queue_t term_screen_queue;
 
-uint fontWidth = 6;
-uint fontHeight = 8;
-
-uint termWidth, termHeight;
-
-uint termCursX = 0;
-uint termCursY = 0;
-
-uint16_t termFgColor = ST77XX_WHITE;
-uint16_t termBgColor = ST77XX_BLACK;
-
-void initLCDTerm(void)
+void terminal_init(void)
 {
-    LCD_setPins(LCD_PIN_DC, LCD_PIN_CS, LCD_PIN_RST, LCD_PIN_SCK, LCD_PIN_TX);
-    LCD_setSPIperiph(LCD_SPI_INSTANCE);
-    LCD_initDisplay(INITR_BLACKTAB);
-    LCD_setRotation(1);
-    GFX_createFramebuf();
-
     PS2_init(PS2_PIN_DATA, PS2_PIN_CK);
-
+    VGA_initDisplay(VGA_VSYNC_PIN, VGA_HSYNC_PIN, VGA_R_PIN);
+    VGA_puts("\n\rpico-rv32ima, compiled ");
+    VGA_puts(__DATE__);
     queue_init(&term_screen_queue, sizeof(char), IO_QUEUE_LEN);
-
-    termWidth = GFX_getWidth() / fontWidth;
-    termHeight = GFX_getHeight() / fontHeight - 1;
-
-    GFX_clearScreen();
-    GFX_flush();
-}
-
-void term_move_cursor(int x, int y)
-{
-    termCursX = x;
-    termCursY = y;
-}
-
-void term_clear_screen()
-{
-    GFX_clearScreen();
-}
-
-void termNewLine()
-{
-    termCursY++;
-    if (termCursY > termHeight)
-    {
-        termCursY--;
-        GFX_scrollUp(fontHeight);
-    }
-}
-
-void termCR()
-{
-    termCursX = 0;
-}
-
-void termPrintChar(char c)
-{
-    if (c == '\n')
-        termNewLine();
-    else if (c == '\r')
-        termCR();
-    else if (c == '\b')
-    {
-        if (termCursX == 0)
-        {
-            termCursX = termWidth - 1;
-            if (termCursY > 0)
-                termCursY--;
-        }
-        else
-            termCursX--;
-    }
-    else
-    {
-        GFX_drawChar(termCursX * fontWidth, termCursY * fontHeight, c, termFgColor, termBgColor, 1, 1);
-        termCursX++;
-        if (termCursX >= termWidth)
-        {
-            termNewLine();
-            termCR();
-        }
-    }
 }
 
 bool termCharAvailable()
@@ -123,7 +51,14 @@ char termPeekChar()
     return c;
 }
 
-const uint16_t termColors[] = {ST77XX_BLACK, ST77XX_RED, ST77XX_GREEN, ST77XX_YELLOW, ST77XX_BLUE, ST77XX_MAGENTA, ST77XX_CYAN, ST77XX_WHITE};
+void clearInLine()
+{
+    for (int i = cr_x; i < TERM_WIDTH; i++)
+    {
+        termBuf[cr_y][i] = 0;
+        bgColBuf[cr_y][i] = 0;
+    }
+}
 
 void runCSI(char csi, uint *param, uint paramCount)
 {
@@ -132,19 +67,18 @@ void runCSI(char csi, uint *param, uint paramCount)
     {
         // Clear everything
         if (paramCount && param[0] == 2)
-            term_clear_screen();
+            VGA_clear();
 
         // Clear everything after cursor
         else if (paramCount == 0)
         {
-            uint fillPosX = termCursX * fontWidth;
-            uint fillPosY = termCursY * fontHeight;
-            GFX_fillRect(fillPosX, fillPosY, GFX_getWidth() - fillPosX, fontHeight, ST77XX_BLACK);
-            if (termCursY < termHeight)
-            {
-                fillPosY = (termCursY + 1) * fontHeight;
-                GFX_fillRect(0, fillPosY, GFX_getWidth(), GFX_getHeight() - fillPosY, ST77XX_BLACK);
-            }
+            clearInLine();
+            if (cr_y < TERM_HEIGHT - 1)
+                for (int i = cr_y + 1; i < TERM_HEIGHT; i++)
+                {
+                    dma_memset(termBuf[i], 0, TERM_WIDTH);
+                    dma_memset(bgColBuf[i], 0, TERM_WIDTH);
+                }
         }
     }
 
@@ -153,11 +87,7 @@ void runCSI(char csi, uint *param, uint paramCount)
     {
         // Clear from cursor to end of line
         if (paramCount == 0)
-        {
-            uint fillPosX = termCursX * fontWidth;
-            uint fillPosY = termCursY * fontHeight;
-            GFX_fillRect(fillPosX, fillPosY, GFX_getWidth() - fillPosX, fontHeight, ST77XX_BLACK);
-        }
+            clearInLine();
     }
 
     // Cursor movement
@@ -165,9 +95,9 @@ void runCSI(char csi, uint *param, uint paramCount)
     {
         // Move to top left corner
         if (paramCount == 0)
-            term_move_cursor(0, 0);
+            VGA_cursor(0, 0);
         else if (paramCount == 2)
-            term_move_cursor(param[1], param[0]);
+            VGA_cursor(param[1], param[0]);
     }
 
     // Graphic rendition parameters
@@ -176,18 +106,18 @@ void runCSI(char csi, uint *param, uint paramCount)
         // Reset parameters
         if (paramCount == 0)
         {
-            termFgColor = ST77XX_WHITE;
-            termBgColor = ST77XX_BLACK;
+            fg_col = WHITE;
+            bg_col = BLACK;
         }
         else
             for (int i = 0; i < paramCount; i++)
             {
                 // Foreground color
                 if (param[i] >= 30 && param[i] <= 37)
-                    termFgColor = termColors[param[i] - 30];
+                    fg_col = termColors[param[i] - 30];
                 // Background color
                 else if (param[i] >= 40 && param[i] <= 47)
-                    termBgColor = termColors[param[i] - 40];
+                    bg_col = termColors[param[i] - 40];
             }
     }
 }
@@ -249,7 +179,7 @@ void vt100Emu()
     }
 
     else
-        termPrintChar(c); // Handle regular characters
+        VGA_putc(c); // Handle regular characters
 }
 
 static uint64_t GetTimeMiliseconds()
@@ -258,15 +188,11 @@ static uint64_t GetTimeMiliseconds()
     return to_ms_since_boot(t);
 }
 
-#define TERM_KEY_UP 'A'
-#define TERM_KEY_DOWN 'B'
-#define TERM_KEY_RIGHT 'C'
-#define TERM_KEY_LEFT 'D'
-
 const char csiStr[] = {ESC, CSI};
 
 void termSendArrow(char a)
 {
+
     queue_try_add(&kb_queue, csiStr);
     queue_try_add(&kb_queue, csiStr + 1);
     queue_try_add(&kb_queue, &a);
@@ -276,7 +202,7 @@ void handlePs2Keyboard(void)
 {
     while (PS2_keyAvailable())
     {
-        char c = PS2_readKey();
+        uint16_t c = PS2_readKey();
 
         switch (c)
         {
@@ -297,7 +223,13 @@ void handlePs2Keyboard(void)
             break;
 
         default:
+            if (c & 0x100)
+            {
+                c &= 0xFF;
+                c -= 'a' - 1;
+            }
             queue_try_add(&kb_queue, &c);
+            // VGA_putc(c);
             break;
         }
     }
@@ -306,9 +238,9 @@ void handlePs2Keyboard(void)
 void drawCursor(uint x, uint y, bool en)
 {
     if (en)
-        GFX_drawLine(x * fontWidth, y * fontHeight + fontHeight, (x + 1) * fontWidth, y * fontHeight + fontHeight, ST77XX_WHITE);
+        bgColBuf[y][x] = GREEN;
     else
-        GFX_drawLine(x * fontWidth, y * fontHeight + fontHeight, (x + 1) * fontWidth, y * fontHeight + fontHeight, ST77XX_BLACK);
+        bgColBuf[y][x] = BLACK;
 }
 
 void terminal_task(void)
@@ -321,14 +253,13 @@ void terminal_task(void)
     uint millis = GetTimeMiliseconds();
     if (millis > prevMillis + 150)
     {
-        if ((termCursX != px || termCursY != py) && !en)
+        if ((cr_x != px || cr_y != py) && !en)
             drawCursor(px, py, false);
-        drawCursor(termCursX, termCursY, en);
+        drawCursor(cr_x, cr_y, en);
         en = !en;
 
-        GFX_Update();
-        px = termCursX;
-        py = termCursY;
+        px = cr_x;
+        py = cr_y;
         prevMillis = millis;
     }
 }

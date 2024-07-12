@@ -9,6 +9,6 @@ enum emulatorCode{
     EMU_UNKNOWN
 };
 
-int rvEmulator();
+int riscv_emu();
 
 #endif
