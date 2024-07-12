@@ -46,7 +46,7 @@ The configuration and pin mapping can be modified in the [rv32_config.h](pico-rv
 
 - The system console can also be exposed over USB-CDC or UART. By default, the VGA and USB consoles are active. This can be changed from the config file.
 
-The SD card needs to be formatted as FAT16 or FAT32. Prebuilt Linux kernel and filesystem images are provided in [the `linux` folder](linux/). They must be placed in the root of the SD card. If you want to build the image yourself, you need to run `make` in the [`linux`](linux) folder. This will clone the buildroot source tree, apply the necessary config files and build the kernel and root filesystem image.
+The SD card needs to be formatted as FAT16 or FAT32. Prebuilt Linux kernel and filesystem images are provided in [this repository](https://github.com/tvlad1234/pico-linux-images). They must be placed in the root of the SD card. If you want to build the image yourself, you need to run `make` in the [`linux`](linux) folder. This will clone the buildroot source tree, apply the necessary config files and build the kernel and root filesystem image.
 
 ## What it does
 On powerup, the board waits for the BOOTSEL button to be pressed. After it has been pressed, the Linux kernel will be copied into RAM. In a few seconds, kernel messages will start streaming on the console. The boot process takes around 30 seconds. The Linux image includes a fork of the [c4 compiler/interpreter](https://github.com/rswier/c4), the duktape JavaScript interpreter and the Lua interpreter, as well as a variety of Linux utilities and the coremark benchmark.
