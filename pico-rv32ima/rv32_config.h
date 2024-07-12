@@ -8,8 +8,10 @@
 #define KERNEL_FILENAME "IMAGE"
 #define BLK_FILENAME "ROOTFS"
 
+// CPU frequency in kHz
+#define RP2040_CPU_FREQ 400000
 // RAM size in megabytes
-#define EMULATOR_RAM_MB 8
+#define EMULATOR_RAM_MB 16
 
 // Time divisor
 #define EMULATOR_TIME_DIV 1
@@ -51,18 +53,20 @@
 /******************/
 
 // Pins for the VGA output (if enabled)
-#define VGA_VSYNC_PIN 17
-#define VGA_HSYNC_PIN 16
+#define VGA_VSYNC_PIN 16
+#define VGA_HSYNC_PIN 17
 #define VGA_R_PIN 18
 
-#define PS2_PIN_DATA 14
-#define PS2_PIN_CK 15
+#define PS2_PIN_DATA 26
+#define PS2_PIN_CK 27
 
 #endif
 
 /******************/
 /* PSRAM config
 /******************/
+
+#define PSRAM_TWO_CHIPS 1
 
 // Use hardware SPI for PSRSAM (bitbang otherwise)
 #define PSRAM_HARDWARE_SPI 1
@@ -94,8 +98,8 @@
 // Pins for the SD SPI interface
 #define SD_SPI_PIN_CK 2
 #define SD_SPI_PIN_TX 3
-#define SD_SPI_PIN_RX 0
-#define SD_SPI_PIN_CS 5
+#define SD_SPI_PIN_RX 4
+#define SD_SPI_PIN_CS 0
 
 
 #endif

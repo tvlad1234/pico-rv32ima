@@ -53,7 +53,7 @@ static inline void rgb_program_init(PIO pio, uint sm, uint offset, uint pin)
     sm_config_set_set_pins(&c, pin, 3);
     sm_config_set_out_pins(&c, pin, 3);
     // Set clock division (Commented out, this one runs at full speed)
-    sm_config_set_clkdiv(&c, 6.4) ;
+    sm_config_set_clkdiv(&c, (float)RP2040_CPU_FREQ / 62500.0f);
     // Set this pin's GPIO function (connect PIO to the pad)
     pio_gpio_init(pio, pin);
     pio_gpio_init(pio, pin + 1);

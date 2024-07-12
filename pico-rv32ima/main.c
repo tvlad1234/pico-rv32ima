@@ -34,7 +34,7 @@ int main()
     sleep_ms(50);
     vreg_set_voltage(VREG_VOLTAGE_MAX); // overvolt the core just a bit
     sleep_ms(50);
-    gset_sys_clock_khz(400000, true); // overclock to 400 MHz (from 125MHz)
+    gset_sys_clock_khz(RP2040_CPU_FREQ, true); // overclock to 400 MHz (from 125MHz)
     sleep_ms(50);
 
     console_init();
@@ -54,13 +54,13 @@ void core1_entry()
 
     int r = psram_init();
     if (r < 0)
-        console_panic("Error initalizing PSRAM!\n\r");
-    console_printf("PSRAM init OK!\n\r");
+        console_panic("\rError initalizing PSRAM!\n\r");
+    console_printf("\rPSRAM init OK!\n\r");
 
     FRESULT rc = pf_mount(&fatfs);
     if (rc)
-        console_panic("Error initalizing SD!\n\r");
-    console_printf("SD init OK!\n\r");
+        console_panic("\rError initalizing SD!\n\r");
+    console_printf("\rSD init OK!\n\r");
 
 #if PSRAM_HARDWARE_SPI
     int baud = spi_set_baudrate(PSRAM_SPI_INST, 1000 * 1000 * 45);
@@ -73,6 +73,7 @@ void core1_entry()
         int c = riscv_emu();
         if (c != EMU_REBOOT)
             wait_button();
+        console_printf("\033[2J\033[1;1H"); // clear terminal
     }
 }
 
