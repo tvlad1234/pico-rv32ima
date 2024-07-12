@@ -174,8 +174,10 @@ DSTATUS disk_initialize (void)
     gpio_init(SD_SPI_PIN_CK);
     gpio_init(SD_SPI_PIN_TX);
     gpio_init(SD_SPI_PIN_RX);
+	gpio_init(PICO_DEFAULT_LED_PIN);
 
     gpio_set_dir(SD_SPI_PIN_CS, GPIO_OUT);
+	gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
 	uint baud = spi_init(SD_SPI_INST, 1000 * 100);
     gpio_set_function(SD_SPI_PIN_CK, GPIO_FUNC_SPI);
@@ -248,6 +250,7 @@ DRESULT disk_readp (
 	res = RES_ERROR;
 	if (send_cmd(CMD17, sector) == 0) {		/* READ_SINGLE_BLOCK */
 
+		gpio_put(PICO_DEFAULT_LED_PIN, 1);
 		tmr = 1000;
 		do {							/* Wait for data packet in timeout of 100ms */
 			DLY_US(100);
@@ -275,6 +278,7 @@ DRESULT disk_readp (
 			/* Skip trailing bytes and CRC */
 			skip_mmc(bc);
 
+			gpio_put(PICO_DEFAULT_LED_PIN, 0);
 			res = RES_OK;
 		}
 	}
@@ -301,7 +305,7 @@ DRESULT disk_writep (
 
 
 	res = RES_ERROR;
-
+	gpio_put(PICO_DEFAULT_LED_PIN, 1);
 	if (buff) {		/* Send data bytes */
 		bc = (UINT)sc;
 		while (bc && wc) {		/* Send data bytes to the card */
@@ -328,7 +332,7 @@ DRESULT disk_writep (
 			release_spi();
 		}
 	}
-
+	gpio_put(PICO_DEFAULT_LED_PIN, 0);
 	return res;
 }
 #endif
