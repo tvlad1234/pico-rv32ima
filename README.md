@@ -1,5 +1,5 @@
 # pico-rv32ima
-Running Linux on the RP2040
+Running Linux on the RP2040 (and RP2350)
 
 ## How it works
 This project uses [CNLohr's mini-rv32ima](https://github.com/cnlohr/mini-rv32ima) RISC-V emulator core to run Linux on a Raspberry Pi Pico, using SPI PSRAM chips as system memory. The Linux kernel and root filesystem are stored on an SD card.
@@ -12,14 +12,15 @@ This project uses [CNLohr's mini-rv32ima](https://github.com/cnlohr/mini-rv32ima
 - 128 kilobytes of 2-way set associative cache
 
 ## Requirements 
-- a Raspberry Pi Pico (or other RP2040 board)
+- a Raspberry Pi Pico or Pico 2 (or other RP2040 or RP2350 boards)
 - an SD card
 - one or two 8 megabyte (64Mbit) SPI PSRAM chips (LY68L6400 and ESP-PSRAM64H are known to be working).
 - (optional, if using the VGA console) 3.3V level shifter for the PS/2 keyboard and a few resistors for the VGA interface.
 
-_This project overvolts and overclocks the RP2040! Use at own risk!_
+_This project overvolts and overclocks the microcontroller! Use at own risk!_
 
 ## How to use
+This project is meant to be used with the official Pi Pico VS Code extension.
 The configuration and pin mapping can be modified in the [rv32_config.h](pico-rv32ima/rv32_config.h) file.
 
 - The SD card operates in SPI mode, with the following default pinout:
