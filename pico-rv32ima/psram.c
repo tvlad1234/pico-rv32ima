@@ -3,9 +3,7 @@
 #include "rv32_config.h"
 #include "psram.h"
 
-#if PSRAM_HARDWARE_SPI
 #include "hardware/spi.h"
-#endif
 
 #define PSRAM_CMD_RES_EN 0x66
 #define PSRAM_CMD_RESET 0x99
@@ -18,52 +16,8 @@
 #define psram_select_chip(c) gpio_put(c, false)
 #define psram_deselect_chip(c) gpio_put(c, true)
 
-#if !PSRAM_HARDWARE_SPI
-#define spi_set_mosi(value) gpio_put(PSRAM_SPI_PIN_TX, value)
-#define spi_read_miso() gpio_get(PSRAM_SPI_PIN_RX)
-
-#define spi_pulse_sck()                \
-    {                                  \
-        asm("nop");                    \
-        gpio_put(PSRAM_SPI_PIN_CK, 1); \
-        asm("nop");                    \
-        gpio_put(PSRAM_SPI_PIN_CK, 0); \
-    }
-
-void spi_tx_array(const uint8_t *data, size_t size)
-{
-    for (size_t i = 0; i < size; i++)
-    {
-        uint8_t byte = data[i];
-        for (int j = 7; j >= 0; j--)
-        {
-            spi_set_mosi((byte >> j) & 0x01);
-            spi_pulse_sck();
-        }
-    }
-}
-
-void spi_rx_array(uint8_t *data, size_t size)
-{
-    for (size_t i = 0; i < size; i++)
-    {
-        uint8_t byte = 0;
-        for (int j = 7; j >= 0; j--)
-        {
-            spi_pulse_sck();
-            byte |= (spi_read_miso() << j);
-        }
-        data[i] = byte;
-    }
-
-#define PSRAM_SPI_WRITE(buf, sz) spi_tx_array(buf, sz)
-#define PSRAM_SPI_READ(buf, sz) spi_rx_array(buf, sz)
-}
-
-#else
 #define PSRAM_SPI_WRITE(buf, sz) spi_write_blocking(PSRAM_SPI_INST, buf, sz)
 #define PSRAM_SPI_READ(buf, sz) spi_read_blocking(PSRAM_SPI_INST, 0, buf, sz)
-#endif
 
 void psram_send_cmd(uint8_t cmd, uint chip)
 {
@@ -107,22 +61,15 @@ int psram_init()
     psram_deselect_chip(PSRAM_SPI_PIN_S2);
 #endif
 
-#if PSRAM_HARDWARE_SPI
     uint baud = spi_init(PSRAM_SPI_INST, 1000 * 1000 * 25);
     gpio_set_function(PSRAM_SPI_PIN_TX, GPIO_FUNC_SPI);
     gpio_set_function(PSRAM_SPI_PIN_RX, GPIO_FUNC_SPI);
     gpio_set_function(PSRAM_SPI_PIN_CK, GPIO_FUNC_SPI);
 
-#else
-    gpio_set_dir(PSRAM_SPI_PIN_TX, GPIO_OUT);
-    gpio_set_dir(PSRAM_SPI_PIN_RX, GPIO_IN);
-    gpio_set_dir(PSRAM_SPI_PIN_CK, GPIO_OUT);
-#endif
-
-    gpio_set_slew_rate(PSRAM_SPI_PIN_S1, GPIO_SLEW_RATE_FAST);
-    gpio_set_slew_rate(PSRAM_SPI_PIN_TX, GPIO_SLEW_RATE_FAST);
-    gpio_set_slew_rate(PSRAM_SPI_PIN_RX, GPIO_SLEW_RATE_FAST);
-    gpio_set_slew_rate(PSRAM_SPI_PIN_CK, GPIO_SLEW_RATE_FAST);
+    //  gpio_set_slew_rate(PSRAM_SPI_PIN_S1, GPIO_SLEW_RATE_FAST);
+    //  gpio_set_slew_rate(PSRAM_SPI_PIN_TX, GPIO_SLEW_RATE_FAST);
+    //  gpio_set_slew_rate(PSRAM_SPI_PIN_RX, GPIO_SLEW_RATE_FAST);
+    //  gpio_set_slew_rate(PSRAM_SPI_PIN_CK, GPIO_SLEW_RATE_FAST);
 
 #if PSRAM_TWO_CHIPS
     gpio_set_slew_rate(PSRAM_SPI_PIN_S2, GPIO_SLEW_RATE_FAST);
