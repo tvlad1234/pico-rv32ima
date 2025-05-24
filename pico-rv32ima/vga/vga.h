@@ -51,5 +51,6 @@ void dma_memcpy(void *dest, void *src, size_t num);
 void VGA_cursor(int x, int y);
 void VGA_clear();
 void VGA_putc(char c);
+void VGA_puts(char s[]);
 
 #endif

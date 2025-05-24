@@ -24,6 +24,8 @@
 #include "hardware/pio.h"
 #include "hardware/dma.h"
 
+#include "string.h"
+
 #include "vga.h"
 #include "font.h"
 
