@@ -61,7 +61,7 @@ static inline void vsync_program_init(PIO pio, uint sm, uint offset, uint pin)
     sm_config_set_set_pins(&c, pin, 1);
     sm_config_set_sideset_pins(&c, pin);
     // Set clock division (div by 5 for 25 MHz state machine)
-    sm_config_set_clkdiv(&c, (float)RP2040_CPU_FREQ / 25000.0f);
+    sm_config_set_clkdiv(&c, (float)SYS_FREQ / 25000.0f);
     // Set this pin's GPIO function (connect PIO to the pad)
     pio_gpio_init(pio, pin);
     // pio_gpio_init(pio, pin+1);

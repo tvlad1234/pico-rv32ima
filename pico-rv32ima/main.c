@@ -23,19 +23,27 @@
 void core1_entry();
 bool gset_sys_clock_khz(uint32_t freq_khz, bool required);
 void gset_sys_clock_pll(uint32_t vco_freq, uint post_div1, uint post_div2);
-bool my_get_bootsel_button();
 void wait_button();
 
 FATFS fatfs;
 
 int main()
 {
+#ifdef PICO_RP2350A
+    vreg_disable_voltage_limit();
+    sleep_ms(50);
+    vreg_set_voltage(RP2350_OVERVOLT);
+    sleep_ms(50);
+    gset_sys_clock_khz(RP2350_CPU_FREQ, true);
+    sleep_ms(50);
 
+#else
     sleep_ms(50);
-    vreg_set_voltage(VREG_VOLTAGE_MAX); // overvolt the core just a bit
+    vreg_set_voltage(RP2040_OVERVOLT);
     sleep_ms(50);
-    gset_sys_clock_khz(RP2040_CPU_FREQ, true); // overclock to 400 MHz (from 125MHz)
+    gset_sys_clock_khz(RP2040_CPU_FREQ, true);
     sleep_ms(50);
+#endif
 
     console_init();
 
@@ -57,16 +65,24 @@ void core1_entry()
         console_panic("\rError initalizing PSRAM!\n\r");
     console_printf("\rPSRAM init OK!\n\r");
 
-    FRESULT rc = pf_mount(&fatfs);
+    FRESULT rc;
+    int tries = 0;
+
+    do
+    {
+        rc = pf_mount(&fatfs);
+        if (rc)
+            tries++;
+        sleep_ms(200);
+    } while (rc && tries < 5);
+
     if (rc)
         console_panic("\rError initalizing SD!\n\r");
     console_printf("\rSD init OK!\n\r");
 
-#if PSRAM_HARDWARE_SPI
     int baud = spi_set_baudrate(PSRAM_SPI_INST, 1000 * 1000 * 45);
     console_printf("PSRAM clock freq: %.2f MHz\n\r", baud / 1000000.0f);
     sleep_ms(50);
-#endif
 
     while (true)
     {
@@ -127,36 +143,8 @@ bool gset_sys_clock_khz(uint32_t freq_khz, bool required)
     return false;
 }
 
-bool my_get_bootsel_button()
-{
-    const uint CS_PIN_INDEX = 1;
-
-    // Set chip select to Hi-Z
-    hw_write_masked(&ioqspi_hw->io[CS_PIN_INDEX].ctrl,
-                    GPIO_OVERRIDE_LOW << IO_QSPI_GPIO_QSPI_SS_CTRL_OEOVER_LSB,
-                    IO_QSPI_GPIO_QSPI_SS_CTRL_OEOVER_BITS);
-
-    // Note we can't call into any sleep functions in flash right now
-    for (volatile int i = 0; i < 1000; ++i)
-        ;
-
-    // The HI GPIO registers in SIO can observe and control the 6 QSPI pins.
-    // Note the button pulls the pin *low* when pressed.
-    bool button_state = !(sio_hw->gpio_hi_in & (1u << CS_PIN_INDEX));
-
-    // Need to restore the state of chip select, else we are going to have a
-    // bad time when we return to code in flash!
-    hw_write_masked(&ioqspi_hw->io[CS_PIN_INDEX].ctrl,
-                    GPIO_OVERRIDE_NORMAL << IO_QSPI_GPIO_QSPI_SS_CTRL_OEOVER_LSB,
-                    IO_QSPI_GPIO_QSPI_SS_CTRL_OEOVER_BITS);
-
-    return button_state;
-}
-
 void wait_button()
 {
-    while (!my_get_bootsel_button())
-        tight_loop_contents();
-    while (my_get_bootsel_button())
-        tight_loop_contents();
+    queue_remove_blocking(&kb_queue, NULL);
+    return;
 }

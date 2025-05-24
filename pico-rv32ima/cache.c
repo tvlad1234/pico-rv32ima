@@ -4,18 +4,25 @@
 #include "cache.h"
 #include "psram.h"
 
-#define psram_write(ofs, p, sz) psram_access(ofs, sz, true, p)
-#define psram_read(ofs, p, sz) psram_access(ofs, sz, false, p)
-
 #define ADDR_BITS 24
-#define OFFSET_BITS 4
-#define CACHE_LINE_SIZE 16
-#define INDEX_BITS 12
 
-#define OFFSET(addr) (addr & 0b1111)
-#define INDEX(addr) ((addr >> OFFSET_BITS) & 0b111111111111)
-#define TAG(addr) (addr >> 16)
-#define BASE(addr) (addr & (~(uint32_t)(0b1111)))
+#define CACHE_LINE_SIZE 16
+#define OFFSET_BITS 4 // log2(CACHE_LINE_SIZE)
+
+#ifdef PICO_RP2350A
+#define CACHE_SET_SIZE 8192
+#define INDEX_BITS 13 // log2(CACHE_SET_SIZE)
+
+#else
+#define CACHE_SET_SIZE 4096
+#define INDEX_BITS 12 // log2(CACHE_SET_SIZE)
+
+#endif
+
+#define OFFSET(addr) (addr & (CACHE_LINE_SIZE - 1))
+#define INDEX(addr) ((addr >> OFFSET_BITS) & (CACHE_SET_SIZE - 1))
+#define TAG(addr) (addr >> (OFFSET_BITS + INDEX_BITS))
+#define BASE(addr) (addr & (~(uint32_t)(CACHE_LINE_SIZE - 1)))
 
 #define LINE_TAG(line) (line->tag)
 
@@ -28,6 +35,9 @@
 #define SET_LRU(line) line->status |= 0b100;
 #define CLEAR_LRU(line) line->status &= ~0b100;
 
+#define psram_write(ofs, p, sz) psram_access(ofs, sz, true, p)
+#define psram_read(ofs, p, sz) psram_access(ofs, sz, false, p)
+
 struct Cacheline
 {
     uint8_t tag;
@@ -36,10 +46,9 @@ struct Cacheline
 };
 typedef struct Cacheline cacheline_t;
 
-cacheline_t cache[4096][2];
+cacheline_t cache[CACHE_SET_SIZE][2];
 
 uint64_t hits, misses;
-
 
 void cache_reset()
 {
@@ -92,7 +101,7 @@ void cache_read(uint32_t addr, void *ptr, uint8_t size)
         if (IS_VALID(line) && IS_DIRTY(line)) // if line is valid and dirty, flush it to RAM
         {
             // flush line to RAM
-            uint32_t flush_base = (index << OFFSET_BITS) | ((uint32_t)(LINE_TAG(line)) << 16);
+            uint32_t flush_base = (index << OFFSET_BITS) | ((uint32_t)(LINE_TAG(line)) << (INDEX_BITS + OFFSET_BITS));
             psram_write(flush_base, line->data, CACHE_LINE_SIZE);
         }
 
@@ -160,7 +169,7 @@ void cache_write(uint32_t addr, void *ptr, uint8_t size)
         if (IS_VALID(line) && IS_DIRTY(line)) // if line is valid and dirty, flush it to RAM
         {
             // flush line to RAM
-            uint32_t flush_base = (index << OFFSET_BITS) | ((uint32_t)(LINE_TAG(line)) << 16);
+            uint32_t flush_base = (index << OFFSET_BITS) | ((uint32_t)(LINE_TAG(line)) << (INDEX_BITS + OFFSET_BITS));
             psram_write(flush_base, line->data, CACHE_LINE_SIZE);
         }
 

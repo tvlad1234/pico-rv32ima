@@ -29,6 +29,14 @@
 #include "vga.h"
 #include "font.h"
 
+#include "../../rv32_config.h"
+
+#ifdef PICO_RP2350A
+#define SYS_FREQ RP2350_CPU_FREQ
+#else 
+#define SYS_FREQ RP2040_CPU_FREQ
+#endif
+
 #include "hsync.pio.h"
 #include "vsync.pio.h"
 #include "rgb.pio.h"
