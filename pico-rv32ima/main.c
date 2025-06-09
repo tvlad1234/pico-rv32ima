@@ -80,8 +80,8 @@ void core1_entry()
         console_panic("\rError initalizing SD!\n\r");
     console_printf("\rSD init OK!\n\r");
 
-    int baud = spi_set_baudrate(PSRAM_SPI_INST, 1000 * 1000 * 45);
-    console_printf("PSRAM clock freq: %.2f MHz\n\r", baud / 1000000.0f);
+    int baud = spi_set_baudrate(PSRAM_SPI_INST, 1000 * 1000 * 55);
+    console_printf("PSRAM clock freq: %.2f MHz\n\n\r", baud / 1000000.0f);
     sleep_ms(50);
 
     while (true)
