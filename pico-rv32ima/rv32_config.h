@@ -27,6 +27,9 @@
 // RAM size in megabytes
 #define EMULATOR_RAM_MB 8
 
+// Kernel command line
+#define KERNEL_CMDLINE "console=hvc0 root=fe00"
+
 // Time divisor
 #define EMULATOR_TIME_DIV 1
 

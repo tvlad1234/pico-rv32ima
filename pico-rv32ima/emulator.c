@@ -12,13 +12,7 @@
 #include "rv32_config.h"
 #include "pff.h"
 
-#if EMULATOR_RAM_MB == 16
-#include "default16mbdtc.h"
-#define DTB_ARRAY default16mbdtb
-#elif EMULATOR_RAM_MB == 8
-#include "default8mbdtc.h"
-#define DTB_ARRAY default8mbdtb
-#endif
+#include "default64mbdtc.h"
 
 int time_divisor = EMULATOR_TIME_DIV;
 int fixed_update = EMULATOR_FIXED_UPDATE;
@@ -27,6 +21,7 @@ int single_step = 0;
 int fail_on_all_faults = 0;
 
 uint32_t ram_amt = EMULATOR_RAM_MB * 1024 * 1024;
+const char kernel_cmdline[] = KERNEL_CMDLINE;
 
 unsigned long blk_size = 67108864;
 unsigned long blk_transfer_size;
@@ -137,9 +132,9 @@ int riscv_emu()
 {
     FRESULT rc = pf_open(KERNEL_FILENAME);
     if (rc)
-        console_panic("Error opening kernel image!\n\r");
-    console_printf("Loading kernel image into RAM\n\r");
-    
+        console_panic("Error opening kernel \"%s\"!\n\r", KERNEL_FILENAME);
+    console_printf("Loading kernel \"%s\" into RAM\n\r", KERNEL_FILENAME);
+
     UINT br;
     uint32_t addr = 0;
     uint32_t total_bytes = 0;
@@ -166,25 +161,36 @@ int riscv_emu()
     }
     if (rc)
         console_panic("Error loading kernel.");
-    console_printf("\n\rLoaded %d kilobytes.\n\r", total_bytes / 1024);
+    console_printf("\rLoaded %d kilobytes.\n\r", total_bytes / 1024);
 
     rc = pf_open(BLK_FILENAME);
     if (rc)
-        console_printf("Error opening block device image!\n\r");
+        console_panic("Error opening block device image \"%s\"!\n\r", BLK_FILENAME);
     else
-        console_printf("Opened block device image.\n\r");
+        console_printf("Opened block device image \"%s\".\n\n\r", BLK_FILENAME);
 
-    console_printf("Loading device tree\n\r");
-    psram_load_data(DTB_ARRAY, (EMULATOR_RAM_MB * 1024 * 1024) - sizeof(DTB_ARRAY), sizeof(DTB_ARRAY));
-    console_printf("Starting RISC-V VM\n\n\r");
-
+    uint32_t dtb_ptr = ram_amt - sizeof(default64mbdtb);
+    psram_load_data(default64mbdtb, dtb_ptr, sizeof(default64mbdtb));
     cache_reset();
 
-    uint32_t dtb_ptr = ram_amt - 1536;
-    uint32_t validram = dtb_ptr;
+    console_printf("Loaded device tree, configured for:\n\r");
+    console_printf("\t%d megabytes RAM\n\r", EMULATOR_RAM_MB);
+    uint32_t dtbram = MINIRV32_LOAD4(dtb_ptr + 0x13c);
+    if (dtbram == 0x00c0ff03)
+    {
+        uint32_t validram = dtb_ptr;
+        dtbram = (validram >> 24) | (((validram >> 16) & 0xff) << 8) | (((validram >> 8) & 0xff) << 16) | ((validram & 0xff) << 24);
+        MINIRV32_STORE4(dtb_ptr + 0x13c, dtbram);
+    }
 
-    //  uint32_t dtbRamValue = (validram >> 24) | (((validram >> 16) & 0xff) << 8) | (((validram >> 8) & 0xff) << 16) | ((validram & 0xff) << 24);
-    //  MINIRV32_STORE4(dtb_ptr + 0x13c, dtbRamValue);
+    console_printf("\tcmdline: \"%s\"\n\n\r", kernel_cmdline);
+    const char *c = kernel_cmdline;
+    uint32_t ptr = dtb_ptr + 0xc0;
+    do
+        MINIRV32_STORE1(ptr++, *(c++));
+    while (*(c - 1));
+
+    console_printf("Starting RISC-V VM\n\n\r");
 
     core.regs[10] = 0x00;                                                // hart ID
     core.regs[11] = dtb_ptr ? (dtb_ptr + MINIRV32_RAM_IMAGE_OFFSET) : 0; // dtb_pa (Must be valid pointer) (Should be pointer to dtb)
