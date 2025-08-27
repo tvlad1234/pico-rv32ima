@@ -1,16 +1,16 @@
-add_subdirectory(petitfatfs)
-add_subdirectory(vga)
-add_subdirectory(ps2)
-
 add_executable(pico-rv32ima
     main.c
-	psram.c
-	cache.c
-	console.c
-	terminal.c
-	emulator.c
-	get_serial.c
-	usb_descriptors.c
+	usb/get_serial.c
+	usb/usb_descriptors.c
+	console/console.c
+	console/terminal/terminal.c
+	console/vga/vga.c
+	console/ps2/ps2.c
+	../tiny-rv32ima/psram/psram.c
+	../tiny-rv32ima/emulator/emulator.c
+	../tiny-rv32ima/cache/cache.c
+	../tiny-rv32ima/pff/pff.c
+	../tiny-rv32ima/pff/mmcbbp.c
 )
 
 # Add the standard library and FatFS/SPI to the build
@@ -22,15 +22,19 @@ target_link_libraries(pico-rv32ima
 	hardware_vreg
 	hardware_spi
 	hardware_clocks
+	hardware_pio
+	hardware_dma
 	tinyusb_device 
 	tinyusb_board
-	petitfatfs
-	vga
-	ps2
-
 )
 
-target_include_directories(pico-rv32ima PUBLIC ${CMAKE_CURRENT_LIST_DIR}/tusb_inc )
+target_include_directories(pico-rv32ima PUBLIC 
+	.
+	hal
+	usb
+	console
+	../tiny-rv32ima
+)
 
 pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
 target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
