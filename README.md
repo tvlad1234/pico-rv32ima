@@ -47,6 +47,9 @@ The configuration and pin mapping can be modified in the [hw_config.h](pico-rv32
 
 The SD card needs to be formatted as FAT16 or FAT32, with the Linux kernel, device tree and filesystem images placed in the root of the card.
 
+## Linux images
+The Linux distribution meant to be used with tiny-rv32ima is built from [buildroot-tiny-rv32ima](https://github.com/tvlad1234/buildroot-tiny-rv32ima.git). Pre-built images are available in the Releases section of the buildroot-tiny-rv32ima repo.
+
 ## What it does
 On powerup, the board waits for a keypress on the console. After that, the Linux kernel will be copied into RAM. In a few seconds, kernel messages will start streaming on the console. The boot process takes around 30 seconds. 
 
