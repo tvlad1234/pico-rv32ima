@@ -1,43 +1,33 @@
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
-#include "pico/util/queue.h"
-
-#include "hardware/gpio.h"
-#include "hardware/sync.h"
-#include "hardware/structs/ioqspi.h"
-#include "hardware/structs/sio.h"
 
 #include "hardware/spi.h"
-#include "hardware/pll.h"
+#include "hardware/gpio.h"
 #include "hardware/vreg.h"
+#include "hardware/pll.h"
 #include "hardware/clocks.h"
 
-#include "rv32_config.h"
-
-#include "psram.h"
-#include "emulator.h"
+#include "hw_config.h"
+#include "tiny-rv32ima.h"
 #include "console.h"
-
-#include "pff.h"
 
 void core1_entry();
 bool gset_sys_clock_khz(uint32_t freq_khz, bool required);
 void gset_sys_clock_pll(uint32_t vco_freq, uint post_div1, uint post_div2);
-void wait_button();
-
-FATFS fatfs;
 
 int main()
 {
+
 #ifdef PICO_RP2350A
+    // Overclock RP2350
     vreg_disable_voltage_limit();
     sleep_ms(50);
     vreg_set_voltage(RP2350_OVERVOLT);
     sleep_ms(50);
     gset_sys_clock_khz(RP2350_CPU_FREQ, true);
     sleep_ms(50);
-
 #else
+    // Overclock RP2040
     sleep_ms(50);
     vreg_set_voltage(RP2040_OVERVOLT);
     sleep_ms(50);
@@ -45,51 +35,75 @@ int main()
     sleep_ms(50);
 #endif
 
+    // LED
+    gpio_init(PICO_DEFAULT_LED_PIN);
+    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+
+    // PSRAM GPIO and SPI
+    gpio_init(PSRAM_SPI_PIN_TX);
+    gpio_init(PSRAM_SPI_PIN_RX);
+    gpio_init(PSRAM_SPI_PIN_CK);
+
+    gpio_init(PSRAM_SPI_PIN_S1);
+    gpio_set_dir(PSRAM_SPI_PIN_S1, GPIO_OUT);
+    gpio_put(PSRAM_SPI_PIN_S1, true);
+
+    spi_init(PSRAM_SPI_INST, 1000 * 1000 * 50);
+    gpio_set_function(PSRAM_SPI_PIN_TX, GPIO_FUNC_SPI);
+    gpio_set_function(PSRAM_SPI_PIN_RX, GPIO_FUNC_SPI);
+    gpio_set_function(PSRAM_SPI_PIN_CK, GPIO_FUNC_SPI);
+
+    // SD GPIO and SPI
+    gpio_init(SD_SPI_PIN_CS);
+    gpio_set_dir(SD_SPI_PIN_CS, GPIO_OUT);
+    gpio_put(SD_SPI_PIN_CS, true);
+
+    gpio_init(SD_SPI_PIN_CK);
+    gpio_init(SD_SPI_PIN_TX);
+    gpio_init(SD_SPI_PIN_RX);
+
+    spi_init(SD_SPI_INST, 1000 * 100 * 50);
+    gpio_set_function(SD_SPI_PIN_CK, GPIO_FUNC_SPI);
+    gpio_set_function(SD_SPI_PIN_TX, GPIO_FUNC_SPI);
+    gpio_set_function(SD_SPI_PIN_RX, GPIO_FUNC_SPI);
+
+    // Bit-banged SPI
+    gpio_init(BB_SPI_CS);
+    gpio_set_dir(BB_SPI_CS, GPIO_OUT);
+    gpio_put(BB_SPI_CS, true);
+
+    gpio_init(BB_SPI_SCK);
+    gpio_set_dir(BB_SPI_SCK, GPIO_OUT);
+    gpio_put(BB_SPI_SCK, true);
+
+    gpio_init(BB_SPI_MOSI);
+    gpio_set_dir(BB_SPI_MOSI, GPIO_OUT);
+
+    gpio_init(BB_SPI_MISO);
+    gpio_set_dir(BB_SPI_MISO, GPIO_IN);
+
+    // Console init
     console_init();
 
+    // Second core bringup
     multicore_reset_core1();
     multicore_fifo_drain();
     multicore_launch_core1(core1_entry);
 
+    // Handle console
     while (true)
         console_task();
 }
 
 void core1_entry()
 {
-    wait_button();
-    console_printf("\033[2J\033[1;1H"); // clear terminal
+    sleep_ms(250);
+    vm_init_hw();
 
-    int r = psram_init();
-    if (r < 0)
-        console_panic("\rError initalizing PSRAM!\n\r");
-    console_printf("\rPSRAM init OK!\n\r");
-
-    FRESULT rc;
-    int tries = 0;
-
-    do
-    {
-        rc = pf_mount(&fatfs);
-        if (rc)
-            tries++;
-        sleep_ms(200);
-    } while (rc && tries < 5);
-
-    if (rc)
-        console_panic("\rError initalizing SD!\n\r");
-    console_printf("\rSD init OK!\n\r");
-
-    int baud = spi_set_baudrate(PSRAM_SPI_INST, 1000 * 1000 * 55);
-    console_printf("PSRAM clock freq: %.2f MHz\n\n\r", baud / 1000000.0f);
-    sleep_ms(50);
-
+    int vm_state = EMU_GET_SD;
     while (true)
     {
-        int c = riscv_emu();
-        if (c != EMU_REBOOT)
-            wait_button();
-        console_printf("\033[2J\033[1;1H"); // clear terminal
+        vm_state = start_vm(vm_state);
     }
 }
 
@@ -141,10 +155,4 @@ bool gset_sys_clock_khz(uint32_t freq_khz, bool required)
         panic("System clock of %u kHz cannot be exactly achieved", freq_khz);
     }
     return false;
-}
-
-void wait_button()
-{
-    queue_remove_blocking(&kb_queue, NULL);
-    return;
 }
